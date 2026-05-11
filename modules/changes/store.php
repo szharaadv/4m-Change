@@ -22,34 +22,34 @@ try {
     $changeNo = generateChangeNo($pdo);
 
     $stmt->execute([
-        ':change_no'          => $changeNo,
-        ':category_4m'        => $_POST['category_4m']      ?? '',
-        ':pic_id'             => $_POST['pic_id']            ?? currentUserId(),
-        ':part_no'            => trim($_POST['part_no']      ?? '') ?: null,
+        ':change_no' => $changeNo,
+        ':category_4m' => $_POST['category_4m'] ?? '',
+        ':pic_id' => $_POST['pic_id'] ?? currentUserId(),
+        ':part_no' => trim($_POST['part_no'] ?? '') ?: null,
         ':implement_location' => trim($_POST['implement_location'] ?? ''),
-        ':part_name'          => trim($_POST['part_name']    ?? ''),
-        ':model'              => trim($_POST['model']        ?? ''),
-        ':start_lot_serial'   => trim($_POST['start_lot_serial'] ?? '') ?: null,
-        ':change_item'        => trim($_POST['change_item']  ?? ''),
-        ':action_plan'        => trim($_POST['action_plan']  ?? ''),
-        ':before_desc'        => trim($_POST['before_desc']  ?? '') ?: null,
-        ':after_desc'         => trim($_POST['after_desc']   ?? '') ?: null,
-        ':judge_status'       => $_POST['judge_status']      ?? 'Pending',
-        ':confirm_customer'   => $_POST['confirm_customer']  ?? 'Not Need',
-        ':evidence_note'      => trim($_POST['evidence_note'] ?? '') ?: null,
-        ':workflow_status'    => $wfStatus,
-        ':created_by'         => currentUserId(),
-        ':updated_by'         => currentUserId(),
+        ':part_name' => trim($_POST['part_name'] ?? ''),
+        ':model' => trim($_POST['model'] ?? ''),
+        ':start_lot_serial' => trim($_POST['start_lot_serial'] ?? '') ?: null,
+        ':change_item' => trim($_POST['change_item'] ?? ''),
+        ':action_plan' => trim($_POST['action_plan'] ?? ''),
+        ':before_desc' => trim($_POST['before_desc'] ?? '') ?: null,
+        ':after_desc' => trim($_POST['after_desc'] ?? '') ?: null,
+        ':judge_status' => $_POST['judge_status'] ?? 'Pending',
+        ':confirm_customer' => $_POST['confirm_customer'] ?? 'Not Need',
+        ':evidence_note' => trim($_POST['evidence_note'] ?? '') ?: null,
+        ':workflow_status' => $wfStatus,
+        ':created_by' => currentUserId(),
+        ':updated_by' => currentUserId(),
     ]);
 
-    $changeId  = $pdo->lastInsertId();
-    $partName  = trim($_POST['part_name'] ?? '');
-    $category  = $_POST['category_4m'] ?? '';
+    $changeId = $pdo->lastInsertId();
+    $partName = trim($_POST['part_name'] ?? '');
+    $category = $_POST['category_4m'] ?? '';
     $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/4m-change/modules/changes/detail.php?id=$changeId";
 
     // Upload before photo
     if (!empty($_FILES['before_photo']['name'])) {
-        $r = uploadFileSingle($_FILES['before_photo'], 'before', ['jpg','jpeg','png','gif','webp']);
+        $r = uploadFileSingle($_FILES['before_photo'], 'before', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
         if ($r['success']) {
             $pdo->prepare("INSERT INTO change_photos (change_request_id, photo_type, file_name, file_path) VALUES (?, 'before', ?, ?)")
                 ->execute([$changeId, $r['file_name'], $r['file_path']]);
@@ -60,7 +60,7 @@ try {
 
     // Upload after photo
     if (!empty($_FILES['after_photo']['name'])) {
-        $r = uploadFileSingle($_FILES['after_photo'], 'after', ['jpg','jpeg','png','gif','webp']);
+        $r = uploadFileSingle($_FILES['after_photo'], 'after', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
         if ($r['success']) {
             $pdo->prepare("INSERT INTO change_photos (change_request_id, photo_type, file_name, file_path) VALUES (?, 'after', ?, ?)")
                 ->execute([$changeId, $r['file_name'], $r['file_path']]);
@@ -72,15 +72,16 @@ try {
     // Upload attachments
     if (!empty($_FILES['attachments']['name'][0])) {
         foreach ($_FILES['attachments']['name'] as $key => $name) {
-            if ($_FILES['attachments']['error'][$key] !== UPLOAD_ERR_OK) continue;
+            if ($_FILES['attachments']['error'][$key] !== UPLOAD_ERR_OK)
+                continue;
             $file = [
-                'name'     => $name,
-                'type'     => $_FILES['attachments']['type'][$key],
+                'name' => $name,
+                'type' => $_FILES['attachments']['type'][$key],
                 'tmp_name' => $_FILES['attachments']['tmp_name'][$key],
-                'error'    => $_FILES['attachments']['error'][$key],
-                'size'     => $_FILES['attachments']['size'][$key],
+                'error' => $_FILES['attachments']['error'][$key],
+                'size' => $_FILES['attachments']['size'][$key],
             ];
-            $r = uploadFileSingle($file, 'attachments', ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx']);
+            $r = uploadFileSingle($file, 'attachments', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx']);
             if ($r['success']) {
                 $pdo->prepare("INSERT INTO change_attachments (change_request_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?)")
                     ->execute([$changeId, $r['file_name'], $r['file_path'], $r['file_type']]);
@@ -101,8 +102,8 @@ try {
 
     // Notifikasi email — hanya kalau Submitted
     if ($wfStatus === 'Submitted') {
-        $submitter     = getSubmitterEmail($pdo, currentUserId());
-        $mgrUsers      = getManagerEmails($pdo);
+        $submitter = getSubmitterEmail($pdo, currentUserId());
+        $mgrUsers = getManagerEmails($pdo);
         $submitterName = $submitter['name'] ?? 'Submitter';
 
         $bodyHtml = "
@@ -130,9 +131,9 @@ try {
 
     header('Location: index.php?success=1');
     exit;
-
 } catch (Exception $e) {
-    if ($pdo->inTransaction()) $pdo->rollBack();
+    if ($pdo->inTransaction())
+        $pdo->rollBack();
     header('Location: create.php?error=' . urlencode($e->getMessage()));
     exit;
 }

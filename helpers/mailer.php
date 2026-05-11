@@ -1,42 +1,51 @@
 <?php
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
+$_mailConfig = (require __DIR__ . '/../config/mail.php');
 
-require_once __DIR__ . '/../libs/PHPMailer/src/Exception.php';
-require_once __DIR__ . '/../libs/PHPMailer/src/PHPMailer.php';
-require_once __DIR__ . '/../libs/PHPMailer/src/SMTP.php';
+define('MAIL_FROM_NAME', $_mailConfig['from_name'] ?? '4M Change System');
+define('MAIL_FROM_EMAIL', $_mailConfig['from_email'] ?? '');
+define('MAIL_ENABLED', $_mailConfig['enabled'] ?? false);
+define('BREVO_KEY', $_mailConfig['api_key'] ?? '');
 
 function sendMail(string $toEmail, string $toName, string $subject, string $body): bool
 {
-    $config = require __DIR__ . '/../config/mail.php';
-
-    if (!$config['enabled']) return true;
-
-    $mail = new PHPMailer(true);
-    try {
-        $mail->isSMTP();
-        $mail->Host       = $config['host'];
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $config['username'];
-        $mail->Password   = $config['password'];
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = $config['port'];
-        $mail->CharSet    = 'UTF-8';
-
-        $mail->setFrom($config['from_email'], $config['from_name']);
-        $mail->addAddress($toEmail, $toName);
-
-        $mail->isHTML(true);
-        $mail->Subject = $subject;
-        $mail->Body    = $body;
-
-        $mail->send();
+    if (!MAIL_ENABLED)
         return true;
-    } catch (Exception $e) {
-        error_log('[Mailer] ' . $mail->ErrorInfo);
+
+    $payload = json_encode([
+        'sender' => ['name' => MAIL_FROM_NAME, 'email' => MAIL_FROM_EMAIL],
+        'to' => [['email' => $toEmail, 'name' => $toName]],
+        'subject' => $subject,
+        'htmlContent' => $body,
+    ]);
+
+    $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => [
+            'accept: application/json',
+            'api-key: ' . BREVO_KEY,
+            'content-type: application/json',
+        ],
+        CURLOPT_TIMEOUT => 15,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        error_log('[Mailer] cURL Error: ' . $curlError);
         return false;
     }
+
+    if ($httpCode === 201)
+        return true;
+
+    error_log('[Mailer] Failed HTTP ' . $httpCode . ': ' . $response);
+    return false;
 }
 
 function mailTemplate(string $title, string $body): string
