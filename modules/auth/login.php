@@ -41,9 +41,14 @@ if (isLoggedIn()) {
                     <input type="text" name="username" class="form-control" placeholder="Masukkan username" required
                         autofocus>
                 </div>
-                <div class="mb-20">
+                <div class="mb-12">
                     <label class="form-label">Password</label>
                     <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <div style="text-align:right;margin-bottom:20px">
+                    <a href="forgot_password.php" style="font-size:12px;color:var(--accent);text-decoration:none">
+                        Forgot Password?
+                    </a>
                 </div>
                 <button type="submit" class="btn btn-primary btn-w100" style="padding:10px">Login</button>
             </form>

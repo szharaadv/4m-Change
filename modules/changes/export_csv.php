@@ -2,31 +2,46 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
+require_once '../../helpers/audit.php';
+writeAuditLog($pdo, 'EXPORT_CSV', 'Export CSV change requests');
 requireLogin();
 
-$role   = currentUserRole();
+$role = currentUserRole();
 $userId = currentUserId();
-$tab    = $_GET['tab'] ?? 'all';
+$tab = $_GET['tab'] ?? 'all';
 
-$where  = [];
+$where = [];
 $params = [];
 
-if (!empty($_GET['category_4m']))    { $where[] = 'cr.category_4m = ?';     $params[] = $_GET['category_4m']; }
-if (!empty($_GET['part_name']))      { $where[] = 'cr.part_name LIKE ?';    $params[] = '%' . $_GET['part_name'] . '%'; }
-if (!empty($_GET['workflow_status'])){ $where[] = 'cr.workflow_status = ?'; $params[] = $_GET['workflow_status']; }
+if (!empty($_GET['category_4m'])) {
+    $where[] = 'cr.category_4m = ?';
+    $params[] = $_GET['category_4m'];
+}
+if (!empty($_GET['part_name'])) {
+    $where[] = 'cr.part_name LIKE ?';
+    $params[] = '%' . $_GET['part_name'] . '%';
+}
+if (!empty($_GET['workflow_status'])) {
+    $where[] = 'cr.workflow_status = ?';
+    $params[] = $_GET['workflow_status'];
+}
 
 if ($tab === 'need_approval') {
-    if (in_array($role, ['manager','admin'], true)) { $where[] = "cr.workflow_status = 'Submitted'"; }
-    elseif ($role === 'qc') { $where[] = "cr.workflow_status IN ('Manager Approved','QC Approved')"; }
-    else { $where[] = '1=0'; }
+    if (in_array($role, ['manager', 'admin'], true)) {
+        $where[] = "cr.workflow_status = 'Submitted'";
+    } elseif ($role === 'qc') {
+        $where[] = "cr.workflow_status IN ('Manager Approved','QC Approved')";
+    } else {
+        $where[] = '1=0';
+    }
 }
 
 $sql = "SELECT cr.*, u.name AS pic_name, c.name AS creator_name
         FROM change_requests cr
         JOIN users u ON cr.pic_id = u.id
         JOIN users c ON cr.created_by = c.id"
-     . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
-     . ' ORDER BY cr.created_at DESC';
+    . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
+    . ' ORDER BY cr.created_at DESC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
@@ -45,10 +60,25 @@ echo "\xEF\xBB\xBF";
 $out = fopen('php://output', 'w');
 
 fputcsv($out, [
-    'Change No', 'Kategori', 'PIC', 'Part No', 'Part Name', 'Model',
-    'Implement Location', 'Start Lot/Serial', '4M Change Item', 'Action',
-    'Before', 'After', 'Judge Status', 'Confirm Customer',
-    'Evidence Note', 'Workflow Status', 'Dibuat Oleh', 'Dibuat Pada', 'Diperbarui Pada',
+    'Change No',
+    'Kategori',
+    'PIC',
+    'Part No',
+    'Part Name',
+    'Model',
+    'Implement Location',
+    'Start Lot/Serial',
+    '4M Change Item',
+    'Action',
+    'Before',
+    'After',
+    'Judge Status',
+    'Confirm Customer',
+    'Evidence Note',
+    'Workflow Status',
+    'Dibuat Oleh',
+    'Dibuat Pada',
+    'Diperbarui Pada',
 ]);
 
 foreach ($rows as $row) {

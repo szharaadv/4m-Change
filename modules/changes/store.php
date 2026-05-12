@@ -3,6 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
+require_once '../../helpers/audit.php';
 requireRole(['admin', 'manager', 'qc']);
 
 try {
@@ -100,7 +101,14 @@ try {
 
     $pdo->commit();
 
-    // Notifikasi email — hanya kalau Submitted
+    // Audit log
+    if ($wfStatus === 'Submitted') {
+        writeAuditLog($pdo, 'CHANGE_SUBMITTED', "Submit change request $changeNo — $partName ($category)");
+    } else {
+        writeAuditLog($pdo, 'CHANGE_CREATED', "Buat draft change request $changeNo — $partName ($category)");
+    }
+
+    // Notifikasi email
     if ($wfStatus === 'Submitted') {
         $submitter = getSubmitterEmail($pdo, currentUserId());
         $mgrUsers = getManagerEmails($pdo);
@@ -120,17 +128,13 @@ try {
             </div>";
 
         foreach ($mgrUsers as $u) {
-            sendMail(
-                $u['email'],
-                $u['name'],
-                "[4M Change] Permohonan Baru Menunggu Approval — $changeNo",
-                mailTemplate("Permohonan Baru Masuk", $bodyHtml)
-            );
+            sendMail($u['email'], $u['name'], "[4M Change] Permohonan Baru Menunggu Approval — $changeNo", mailTemplate("Permohonan Baru Masuk", $bodyHtml));
         }
     }
 
     header('Location: index.php?success=1');
     exit;
+
 } catch (Exception $e) {
     if ($pdo->inTransaction())
         $pdo->rollBack();
