@@ -103,19 +103,11 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
         <?php if (in_array($role,['admin','manager'],true) && $data['workflow_status']==='Rejected'): ?>
         <a href="edit.php?id=<?= $data['id'] ?>" class="btn btn-outline-warning btn-sm">Edit & Resubmit</a>
         <?php endif; ?>
+        <a href="export_pdf.php?id=<?= $data['id'] ?>" class="btn btn-sm" target="_blank"
+            style="background:#f8f8f8;border-color:#ddd">
+            📄 Export PDF
+        </a>
     </div>
-    <div class="d-flex align-items-center gap-2">
-    <span class="badge text-bg-<?= workflowBadgeClass($data['workflow_status']) ?>" style="font-size:13px;padding:6px 12px">
-        <?= e($data['workflow_status']) ?>
-    </span>
-    <?php if (in_array($role,['admin','manager'],true) && $data['workflow_status']==='Rejected'): ?>
-    <a href="edit.php?id=<?= $data['id'] ?>" class="btn btn-outline-warning btn-sm">Edit & Resubmit</a>
-    <?php endif; ?>
-    <a href="export_pdf.php?id=<?= $data['id'] ?>" class="btn btn-sm" target="_blank"
-        style="background:#f8f8f8;border-color:#ddd">
-        📄 Export PDF
-    </a>
-</div>
 </div>
 
 <!-- Approval Progress Bar -->

@@ -111,7 +111,7 @@ try {
     // Notifikasi email
     if ($wfStatus === 'Submitted') {
         $submitter = getSubmitterEmail($pdo, currentUserId());
-        $mgrUsers = getManagerEmails($pdo);
+        $mgrUsers = getManagerEmails($pdo, $category);
         $submitterName = $submitter['name'] ?? 'Submitter';
 
         $bodyHtml = "

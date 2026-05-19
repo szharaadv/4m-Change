@@ -6,9 +6,9 @@ require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
 requireLogin();
 
-$id = (int) ($_POST['id'] ?? 0);
+$id     = (int)($_POST['id'] ?? 0);
 $action = $_POST['action'] ?? '';
-$note = trim($_POST['note'] ?? '');
+$note   = trim($_POST['note'] ?? '');
 
 if (!$id || !in_array($action, ['approve', 'reject'], true)) {
     header('Location: index.php');
@@ -24,12 +24,12 @@ if (!$cr) {
     exit;
 }
 
-$role = currentUserRole();
+$role   = currentUserRole();
 $userId = currentUserId();
 
 $isManagerStep = $role === 'manager' && $cr['workflow_status'] === 'Submitted';
-$isQcStep = $role === 'qc' && $cr['workflow_status'] === 'Manager Approved';
-$isQcFinal = $role === 'qc' && $cr['workflow_status'] === 'QC Approved';
+$isQcStep      = $role === 'qc'      && $cr['workflow_status'] === 'Manager Approved';
+$isQcFinal     = $role === 'qc'      && $cr['workflow_status'] === 'QC Approved';
 
 if (!$isManagerStep && !$isQcStep && !$isQcFinal) {
     header('Location: detail.php?id=' . $id . '&error=not_your_turn');
@@ -39,23 +39,23 @@ if (!$isManagerStep && !$isQcStep && !$isQcFinal) {
 try {
     $pdo->beginTransaction();
 
-    $changeNo = $cr['change_no'];
+    $changeNo  = $cr['change_no'];
     $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/4m-change/modules/changes/detail.php?id=$id";
 
     if ($action === 'approve') {
         if ($isManagerStep) {
-            $newStatus = 'Manager Approved';
-            $step = 'manager';
+            $newStatus  = 'Manager Approved';
+            $step       = 'manager';
             $actionType = 'APPROVAL';
             $actionNote = 'Disetujui oleh Manager Department';
         } elseif ($isQcStep) {
-            $newStatus = 'QC Approved';
-            $step = 'qc';
+            $newStatus  = 'QC Approved';
+            $step       = 'qc';
             $actionType = 'APPROVAL';
             $actionNote = 'Disetujui oleh QC';
         } else {
-            $newStatus = 'Closed';
-            $step = 'qc_final';
+            $newStatus  = 'Closed';
+            $step       = 'qc_final';
             $actionType = 'CLOSED';
             $actionNote = 'Final submit oleh QC — permohonan ditutup';
         }
@@ -70,7 +70,7 @@ try {
             ->execute([
                 $newStatus,
                 $userId,
-                $_POST['judge_status'] ?? $cr['judge_status'],
+                $_POST['judge_status']     ?? $cr['judge_status'],
                 $_POST['confirm_customer'] ?? $cr['confirm_customer'],
                 trim($_POST['evidence_note'] ?? '') ?: $cr['evidence_note'],
                 $id
@@ -95,7 +95,7 @@ try {
         $noteRow = $note ? "<tr><td style='color:#888;padding:6px 0;font-size:12px'>Catatan</td><td style='padding:6px 0;font-size:12px'>$note</td></tr>" : '';
 
         if ($isManagerStep) {
-            $qcUsers = getQcEmails($pdo);
+            $qcUsers  = getQcEmails($pdo);
             $bodyHtml = "
                 <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui oleh <strong>Manager Department</strong> dan menunggu review QC.</p>
                 <table style='width:100%;border-collapse:collapse;font-size:13px'>
@@ -112,7 +112,7 @@ try {
             }
 
         } elseif ($isQcStep) {
-            $qcUsers = getQcEmails($pdo);
+            $qcUsers  = getQcEmails($pdo);
             $bodyHtml = "
                 <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui QC tahap pertama dan menunggu <strong>Final Submit QC</strong>.</p>
                 <table style='width:100%;border-collapse:collapse;font-size:13px'>
@@ -132,7 +132,7 @@ try {
             $submitter = getSubmitterEmail($pdo, $cr['created_by']);
             if ($submitter) {
                 $bodyHtml = "
-                    <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change kamu telah <strong style='color:#16a34a'>selesai diproses (Closed)</strong>.</p>
+                    <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change telah <strong style='color:#16a34a'>selesai diproses (Closed)</strong>.</p>
                     <table style='width:100%;border-collapse:collapse;font-size:13px'>
                         <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
                         <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
@@ -141,9 +141,9 @@ try {
                         $noteRow
                     </table>
                     <div style='margin:20px 0'>
-                        <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail</a>
+                        <a href='$detailUrl' style='background:#16a34a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail</a>
                     </div>";
-                sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan Selesai (Closed) — $changeNo", mailTemplate("Permohonan Closed", $bodyHtml));
+                sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan Selesai (Closed) — $changeNo", mailTemplate("Permohonan Closed", $bodyHtml, '#16a34a'));
             }
         }
 
@@ -164,7 +164,7 @@ try {
                 $userId,
                 $note,
                 $userId,
-                $_POST['judge_status'] ?? $cr['judge_status'],
+                $_POST['judge_status']     ?? $cr['judge_status'],
                 $_POST['confirm_customer'] ?? $cr['confirm_customer'],
                 trim($_POST['evidence_note'] ?? '') ?: $cr['evidence_note'],
                 $id
@@ -183,9 +183,9 @@ try {
 
         $submitter = getSubmitterEmail($pdo, $cr['created_by']);
         if ($submitter) {
-            $alasan = $note ? "<tr><td style='color:#888;padding:6px 0;width:140px'>Alasan</td><td style='padding:6px 0;color:#D0021B'>" . htmlspecialchars($note) . "</td></tr>" : '';
+            $alasan   = $note ? "<tr><td style='color:#888;padding:6px 0;width:140px'>Alasan</td><td style='padding:6px 0;color:#991b1b'>" . htmlspecialchars($note) . "</td></tr>" : '';
             $bodyHtml = "
-                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change kamu telah <strong style='color:#D0021B'>ditolak</strong> oleh " . htmlspecialchars(stepLabel($step)) . ".</p>
+                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change telah <strong style='color:#991b1b'>ditolak</strong> oleh " . htmlspecialchars(stepLabel($step)) . ".</p>
                 <table style='width:100%;border-collapse:collapse;font-size:13px'>
                     <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
                     <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
@@ -194,9 +194,9 @@ try {
                 </table>
                 <p style='color:#444;font-size:12px;margin:16px 0 0'>Silakan login ke sistem untuk melihat detail dan melakukan edit & resubmit.</p>
                 <div style='margin:20px 0'>
-                    <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Resubmit</a>
+                    <a href='$detailUrl' style='background:#991b1b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Resubmit</a>
                 </div>";
-            sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan Ditolak — $changeNo", mailTemplate("Permohonan Ditolak", $bodyHtml));
+            sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan Ditolak — $changeNo", mailTemplate("Permohonan Ditolak", $bodyHtml, '#991b1b'));
         }
     }
 
@@ -204,8 +204,7 @@ try {
     exit;
 
 } catch (Exception $e) {
-    if ($pdo->inTransaction())
-        $pdo->rollBack();
+    if ($pdo->inTransaction()) $pdo->rollBack();
     error_log('[process_approval] ' . $e->getMessage());
     header('Location: detail.php?id=' . $id . '&error=' . urlencode($e->getMessage()));
     exit;

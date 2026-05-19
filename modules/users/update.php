@@ -5,13 +5,14 @@ require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
 requireRole(['superadmin']);
 
-$id = (int) ($_POST['id'] ?? 0);
-$name = trim($_POST['name'] ?? '');
-$username = trim($_POST['username'] ?? '');
-$email = trim($_POST['email'] ?? '');
-$role = $_POST['role'] ?? '';
-$password = $_POST['password'] ?? '';
+$id              = (int)($_POST['id'] ?? 0);
+$name            = trim($_POST['name'] ?? '');
+$username        = trim($_POST['username'] ?? '');
+$email           = trim($_POST['email'] ?? '');
+$role            = $_POST['role'] ?? '';
+$password        = $_POST['password'] ?? '';
 $passwordConfirm = $_POST['password_confirm'] ?? '';
+$categories      = $_POST['categories'] ?? [];
 
 if (!$id || !$name || !$username || !$role) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Semua field wajib diisi.'));
@@ -41,7 +42,13 @@ if ($password !== '') {
     }
 }
 
+// Validate categories
+$validCats = ['Man', 'Material', 'Method', 'Machine'];
+$categories = array_filter($categories, fn($c) => in_array($c, $validCats, true));
+
 try {
+    $pdo->beginTransaction();
+
     if ($password !== '') {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
         $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, password = ? WHERE id = ?")
@@ -53,9 +60,25 @@ try {
         writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role)");
     }
 
+    // Update category assignment
+    // Delete existing first
+    $pdo->prepare("DELETE FROM category_managers WHERE user_id = ?")->execute([$id]);
+
+    // Insert new categories (only if role is manager)
+    if ($role === 'manager' && !empty($categories)) {
+        $insertCat = $pdo->prepare("INSERT INTO category_managers (category_4m, user_id) VALUES (?, ?)");
+        foreach ($categories as $cat) {
+            $insertCat->execute([$cat, $id]);
+        }
+        writeAuditLog($pdo, 'USER_UPDATED', "Update kategori manager $username: " . implode(', ', $categories));
+    }
+
+    $pdo->commit();
     header('Location: index.php?success=updated');
     exit;
+
 } catch (Exception $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     header('Location: edit.php?id=' . $id . '&error=' . urlencode($e->getMessage()));
     exit;
 }
