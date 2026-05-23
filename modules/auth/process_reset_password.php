@@ -50,5 +50,5 @@ $_SESSION['user'] = [
 // Audit log after session set
 writeAuditLog($pdo, 'PASSWORD_RESET', "User {$user['username']} reset password via email", $user['id'], $user['username'], $user['role']);
 
-header('Location: /4m-change/modules/dashboard/index.php');
+header('Location: /../modules/dashboard/index.php');
 exit;
