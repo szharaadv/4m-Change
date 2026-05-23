@@ -8,11 +8,25 @@ include '../../templates/navbar.php';
 
 $users = $pdo->query("SELECT * FROM users ORDER BY role ASC, name ASC")->fetchAll();
 
+// Get all category assignments
+$catRows = $pdo->query("SELECT user_id, category_4m FROM category_managers")->fetchAll();
+$catMap  = [];
+foreach ($catRows as $row) {
+    $catMap[$row['user_id']][] = $row['category_4m'];
+}
+
 $roleBadge = [
     'superadmin' => 'badge-manager',
-    'manager' => 'badge-submitted',
-    'qc' => 'badge-qc',
-    'admin' => 'badge-draft',
+    'manager'    => 'badge-submitted',
+    'qc'         => 'badge-qc',
+    'admin'      => 'badge-draft',
+];
+
+$catColor = [
+    'Man'      => '#2563eb',
+    'Material' => '#d97706',
+    'Method'   => '#7c3aed',
+    'Machine'  => '#0891b2',
 ];
 ?>
 
@@ -25,21 +39,21 @@ $roleBadge = [
 </div>
 
 <?php if (isset($_GET['success'])): ?>
-    <div class="alert alert-success">
-        <?php
-        $msg = [
-            'created' => 'User berhasil ditambahkan.',
-            'updated' => 'User berhasil diperbarui.',
-            'deleted' => 'User berhasil dihapus.',
-            'email_resent' => 'Email setup berhasil dikirim ulang.',
-        ];
-        echo $msg[$_GET['success']] ?? 'Berhasil.';
-        ?>
-    </div>
+<div class="alert alert-success">
+    <?php
+    $msg = [
+        'created'      => 'User berhasil ditambahkan.',
+        'updated'      => 'User berhasil diperbarui.',
+        'deleted'      => 'User berhasil dihapus.',
+        'email_resent' => 'Email setup berhasil dikirim ulang.',
+    ];
+    echo $msg[$_GET['success']] ?? 'Berhasil.';
+    ?>
+</div>
 <?php endif; ?>
 
 <?php if (isset($_GET['error'])): ?>
-    <div class="alert alert-danger"><?= e($_GET['error']) ?></div>
+<div class="alert alert-danger"><?= e($_GET['error']) ?></div>
 <?php endif; ?>
 
 <div class="table-wrap">
@@ -54,62 +68,81 @@ $roleBadge = [
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Category 4M</th>
                 <th>Status</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody>
             <?php if (!$users): ?>
-                <tr>
-                    <td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Tidak ada user.</td>
-                </tr>
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Tidak ada user.</td></tr>
             <?php endif; ?>
             <?php foreach ($users as $i => $u): ?>
-                <tr>
-                    <td style="color:var(--muted)"><?= $i + 1 ?></td>
-                    <td>
-                        <div style="display:flex;align-items:center;gap:10px">
-                            <div class="user-avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">
-                                <?= strtoupper(substr($u['name'], 0, 2)) ?>
-                            </div>
-                            <div>
-                                <div style="font-weight:500;font-size:13px"><?= e($u['name']) ?></div>
-                            </div>
+            <tr>
+                <td style="color:var(--muted)"><?= $i + 1 ?></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="user-avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">
+                            <?= strtoupper(substr($u['name'], 0, 2)) ?>
                         </div>
-                    </td>
-                    <td class="mono"><?= e($u['username']) ?></td>
-                    <td style="color:var(--muted);font-size:12px"><?= e($u['email'] ?: '—') ?></td>
-                    <td><span class="badge <?= $roleBadge[$u['role']] ?? 'badge-draft' ?>"><?= e($u['role']) ?></span></td>
-                    <td>
-                        <?php if ($u['is_active']): ?>
-                            <span class="badge badge-closed">Active</span>
-                        <?php else: ?>
-                            <span class="badge badge-rejected">Pending Setup</span>
+                        <div style="font-weight:500;font-size:13px"><?= e($u['name']) ?></div>
+                    </div>
+                </td>
+                <td class="mono"><?= e($u['username']) ?></td>
+                <td style="color:var(--muted);font-size:12px"><?= e($u['email'] ?: '—') ?></td>
+                <td><span class="badge <?= $roleBadge[$u['role']] ?? 'badge-draft' ?>"><?= e($u['role']) ?></span></td>
+                <td>
+                    <?php if ($u['role'] === 'manager' && !empty($catMap[$u['id']])): ?>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                        <?php foreach ($catMap[$u['id']] as $cat): ?>
+                        <span style="
+                            display:inline-block;
+                            padding:2px 8px;
+                            border-radius:4px;
+                            font-size:10px;
+                            font-weight:600;
+                            font-family:var(--mono);
+                            background:<?= $catColor[$cat] ?? '#888' ?>20;
+                            color:<?= $catColor[$cat] ?? '#888' ?>
+                        "><?= $cat ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php elseif ($u['role'] === 'manager'): ?>
+                    <span style="color:var(--muted);font-size:11px">— Belum diassign</span>
+                    <?php else: ?>
+                    <span style="color:var(--muted);font-size:11px">—</span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <?php if ($u['is_active']): ?>
+                    <span class="badge badge-closed">Active</span>
+                    <?php else: ?>
+                    <span class="badge badge-rejected">Pending Setup</span>
+                    <?php endif; ?>
+                </td>
+                <td>
+                    <div class="d-flex gap-2">
+                        <a href="edit.php?id=<?= $u['id'] ?>" class="btn btn-sm">Edit</a>
+                        <?php if (!$u['is_active'] && $u['email']): ?>
+                        <form method="POST" action="resend_email.php">
+                            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                            <button type="submit" class="btn btn-sm"
+                                style="background:#eff6ff;color:#2563eb;border-color:#93c5fd"
+                                onclick="return confirm('Kirim ulang email setup ke <?= e($u['name']) ?>?')">
+                                Resend Email
+                            </button>
+                        </form>
                         <?php endif; ?>
-                    </td>
-                    <td>
-                        <div class="d-flex gap-2">
-                            <a href="edit.php?id=<?= $u['id'] ?>" class="btn btn-sm">Edit</a>
-                            <?php if (!$u['is_active'] && $u['email']): ?>
-                                <form method="POST" action="resend_email.php">
-                                    <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                    <button type="submit" class="btn btn-sm"
-                                        style="background:#eff6ff;color:#2563eb;border-color:#93c5fd"
-                                        onclick="return confirm('Kirim ulang email setup ke <?= e($u['name']) ?>?')">
-                                        Resend Email
-                                    </button>
-                                </form>
-                            <?php endif; ?>
-                            <?php if ($u['id'] !== currentUserId()): ?>
-                                <form method="POST" action="delete.php"
-                                    onsubmit="return confirm('Hapus user <?= e($u['name']) ?>?')">
-                                    <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                </form>
-                            <?php endif; ?>
-                        </div>
-                    </td>
-                </tr>
+                        <?php if ($u['id'] !== currentUserId()): ?>
+                        <form method="POST" action="delete.php"
+                            onsubmit="return confirm('Hapus user <?= e($u['name']) ?>?')">
+                            <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                        <?php endif; ?>
+                    </div>
+                </td>
+            </tr>
             <?php endforeach; ?>
         </tbody>
     </table>

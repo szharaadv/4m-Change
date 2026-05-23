@@ -65,9 +65,9 @@ function isActive(string $path): string
     <div class="navbar-user">
         <?php if ($user): ?>
             <div class="user-info">
-                <div class="user-avatar"><?= strtoupper(substr($user['name'], 0, 2)) ?></div>
+                <div class="user-avatar"><?= strtoupper(substr($user['name'] ?? 'U', 0, 2)) ?></div>
                 <div>
-                    <div class="user-name"><?= e($user['name']) ?></div>
+                    <div class="user-name"><?= e($user['name'] ?? 'User') ?></div>
                     <div class="user-role"><?= e($role) ?></div>
                 </div>
             </div>
