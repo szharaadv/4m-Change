@@ -4,7 +4,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 
 if (isLoggedIn()) {
-    header('Location: /4m-change/modules/dashboard/index.php');
+    header('Location: /../modules/dashboard/index.php');
     exit;
 }
 ?>
@@ -19,7 +19,7 @@ if (isLoggedIn()) {
     <link
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap"
         rel="stylesheet">
-    <link href="/4m-change/assets/css/style.css" rel="stylesheet">
+    <link href="../../assets/css/style.css" rel="stylesheet">
 </head>
 
 <body>
