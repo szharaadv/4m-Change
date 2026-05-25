@@ -49,7 +49,7 @@ try {
 
     writeAuditLog($pdo, 'USER_CREATED', "Tambah user baru: $username ($role) — $email");
 
-    $setupUrl = "http://" . $_SERVER['HTTP_HOST'] . "/4m-change/modules/auth/set_password.php?token=$token";
+    $setupUrl = "http://" . $_SERVER['HTTP_HOST'] . "/../modules/auth/set_password.php?token=$token";
 
     $bodyHtml = "
         <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>$name</strong>,</p>

@@ -46,7 +46,7 @@ try {
     $changeId = $pdo->lastInsertId();
     $partName = trim($_POST['part_name'] ?? '');
     $category = $_POST['category_4m'] ?? '';
-    $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/4m-change/modules/changes/detail.php?id=$changeId";
+    $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/../modules/changes/detail.php?id=$changeId";
 
     // Upload before photo
     if (!empty($_FILES['before_photo']['name'])) {

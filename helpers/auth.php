@@ -18,7 +18,7 @@ function isLoggedIn(): bool
 function requireLogin(): void
 {
     if (!isLoggedIn()) {
-        header('Location: /4m-change/modules/auth/login.php');
+        header('Location: /../modules/auth/login.php');
         exit;
     }
 }

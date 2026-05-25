@@ -40,7 +40,7 @@ try {
     $pdo->beginTransaction();
 
     $changeNo  = $cr['change_no'];
-    $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/4m-change/modules/changes/detail.php?id=$id";
+    $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/../modules/changes/detail.php?id=$id";
 
     if ($action === 'approve') {
         if ($isManagerStep) {

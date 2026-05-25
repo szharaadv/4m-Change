@@ -30,7 +30,7 @@ if (!$user) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reset Password — 4M Change</title>
-    <link rel="stylesheet" href="/4m-change/assets/css/style.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
 </head>
 
 <body>

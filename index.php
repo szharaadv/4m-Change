@@ -1,8 +1,8 @@
 <?php
 session_start();
 if (isset($_SESSION['user'])) {
-    header('Location: /modules/dashboard/index.php');
+    header('Location: /../modules/dashboard/index.php');
 } else {
-    header('Location: /modules/auth/login.php');
+    header('Location: /../modules/auth/login.php');
 }
 exit;
