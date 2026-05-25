@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requireRole(['admin']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -16,7 +16,7 @@ foreach ($catRows as $row) {
 }
 
 $roleBadge = [
-    'superadmin' => 'badge-manager',
+    'admin' => 'badge-manager',
     'manager'    => 'badge-submitted',
     'qc'         => 'badge-qc',
     'admin'      => 'badge-draft',

@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['superadmin']);
+requireRole(['admin']);
 
 $id              = (int)($_POST['id'] ?? 0);
 $name            = trim($_POST['name'] ?? '');
@@ -19,7 +19,7 @@ if (!$id || !$name || !$username || !$role) {
     exit;
 }
 
-if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc'], true)) {
+if (!in_array($role, ['admin', 'manager', 'qc'], true)) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Role tidak valid.'));
     exit;
 }

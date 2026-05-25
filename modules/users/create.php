@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requireRole(['admin']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 ?>
@@ -40,7 +40,7 @@ include '../../templates/navbar.php';
                 <label class="form-label">Role <span class="required">*</span></label>
                 <select name="role" class="form-control" required>
                     <option value="">Pilih role...</option>
-                    <option value="superadmin">superadmin</option>
+                    <option value="qc_prod">qc_prod</option>
                     <option value="admin">admin</option>
                     <option value="manager">manager</option>
                     <option value="qc">qc</option>

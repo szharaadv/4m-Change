@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requireRole(['admin']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -52,7 +52,7 @@ $assignedCats = $catStmt->fetchAll(PDO::FETCH_COLUMN);
             <div>
                 <label class="form-label">Role <span class="required">*</span></label>
                 <select name="role" class="form-control" required id="roleSelect" onchange="toggleCategory()">
-                    <?php foreach (['superadmin', 'admin', 'manager', 'qc'] as $r): ?>
+                    <?php foreach (['admin', 'manager', 'qc'] as $r): ?>
                     <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
                     <?php endforeach; ?>
                 </select>

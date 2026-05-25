@@ -62,7 +62,7 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
     </div>
     <div class="d-flex gap-8">
         <a href="export_csv.php?<?= http_build_query(array_merge($_GET, ['tab' => $tab])) ?>" class="btn">Export CSV</a>
-        <?php if (in_array($role, ['admin','manager'], true)): ?>
+        <?php if (in_array($role, ['admin','manager','qc','qc_prod'], true)): ?>
         <a href="create.php" class="btn btn-primary">+ New Change</a>
         <?php endif; ?>
     </div>
