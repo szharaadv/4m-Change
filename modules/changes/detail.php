@@ -246,7 +246,6 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                 <?php if ($afterPhoto): ?>
                 <div class="col-md-6">
                     <div class="text-muted small mb-2 fw-semibold">AFTER</div>
-                    <?php echo APP_URL; ?>
                     <img src="<?= APP_URL . '/' . e($afterPhoto['file_path']) ?>"
                         class="img-fluid rounded photo-thumb"
                         style="max-height:220px;object-fit:cover;width:100%;border:1px solid #e2e5ea;cursor:zoom-in"
