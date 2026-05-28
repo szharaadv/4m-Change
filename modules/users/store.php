@@ -49,8 +49,8 @@ try {
 
     writeAuditLog($pdo, 'USER_CREATED', "Tambah user baru: $username ($role) — $email");
 
-    $setupUrl = "http://" . $_SERVER['HTTP_HOST'] . "/../modules/auth/set_password.php?token=$token";
-
+    $setupUrl = APP_URL . "/modules/auth/set_password.php?token=$token";
+    
     $bodyHtml = "
         <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>$name</strong>,</p>
         <p style='color:#444;font-size:13px;margin:0 0 16px'>Akun kamu di sistem <strong>4M Change</strong> telah dibuat oleh Administrator. Klik tombol di bawah untuk mengatur password kamu.</p>
