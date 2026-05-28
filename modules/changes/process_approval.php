@@ -40,8 +40,8 @@ try {
     $pdo->beginTransaction();
 
     $changeNo  = $cr['change_no'];
-    $detailUrl = "http://" . $_SERVER['HTTP_HOST'] . "/../modules/changes/detail.php?id=$id";
-
+    $detailUrl = APP_URL . "/modules/changes/detail.php?id=$id";
+    
     if ($action === 'approve') {
         if ($isManagerStep) {
             $newStatus  = 'Manager Approved';

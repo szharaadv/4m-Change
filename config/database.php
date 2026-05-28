@@ -16,9 +16,7 @@ $options = [
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (PDOException $e) {
-    die('<div style="font-family:sans-serif;padding:40px;background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;margin:40px auto;max-width:600px">
-        <h2>Database Connection Failed</h2>
-        <p>' . htmlspecialchars($e->getMessage()) . '</p>
-        <p style="font-size:13px;margin-top:12px">Pastikan XAMPP MySQL sudah berjalan dan database <strong>db_4m_change</strong> sudah dibuat.</p>
-    </div>');
+    die('Database Connection Failed: ' . htmlspecialchars($e->getMessage()));
 }
+
+define('APP_URL', 'http://localhost/4m-change');

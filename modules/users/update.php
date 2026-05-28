@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['admin']);
+requireRole(['admin', 'superadmin']);
 
 $id              = (int)($_POST['id'] ?? 0);
 $name            = trim($_POST['name'] ?? '');

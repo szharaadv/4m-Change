@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
-requireRole(['admin']);
+requireRole(['admin', 'superadmin']);
 
 $name = trim($_POST['name'] ?? '');
 $username = trim($_POST['username'] ?? '');
