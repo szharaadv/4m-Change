@@ -19,4 +19,4 @@ try {
     die('Database Connection Failed: ' . htmlspecialchars($e->getMessage()));
 }
 
-define('APP_URL', 'http://localhost/4m-change');
+define('APP_URL', 'https://4m-change.yadin.com');
