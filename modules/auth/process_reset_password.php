@@ -3,52 +3,55 @@ session_start();
 require_once '../../config/database.php';
 require_once '../../helpers/audit.php';
 
-$token = trim($_POST['token'] ?? '');
-$password = $_POST['password'] ?? '';
-$passwordConfirm = $_POST['password_confirm'] ?? '';
+$email = trim($_POST['email'] ?? '');
 
-if (!$token) {
-    header('Location: forgot_password.php?error=' . urlencode('Token tidak valid.'));
+if (!$email) {
+    header('Location: forgot_password.php?error=' . urlencode('Email wajib diisi.'));
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT * FROM users WHERE password_token = ? AND token_expires_at > NOW() AND is_active = 1 LIMIT 1");
-$stmt->execute([$token]);
+// Cek user
+$stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
+$stmt->execute([$email]);
 $user = $stmt->fetch();
 
 if (!$user) {
-    die('<div style="font-family:sans-serif;padding:40px;text-align:center">
-        <h2>Link tidak valid atau sudah kadaluarsa.</h2>
-        <p>Silakan request reset password lagi.</p>
-        <a href="forgot_password.php">Request Ulang</a>
-    </div>');
-}
-
-if (strlen($password) < 6) {
-    header('Location: reset_password.php?token=' . urlencode($token) . '&error=' . urlencode('Password minimal 6 karakter.'));
+    header('Location: forgot_password.php?error=' . urlencode('Email tidak terdaftar.'));
     exit;
 }
 
-if ($password !== $passwordConfirm) {
-    header('Location: reset_password.php?token=' . urlencode($token) . '&error=' . urlencode('Password dan konfirmasi tidak cocok.'));
-    exit;
-}
+// Generate token
+$token = bin2hex(random_bytes(32));
 
-$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+// ✅ SET EXPIRED 1 JAM
+$expires = date('Y-m-d H:i:s', time() + 3600);
 
-$pdo->prepare("UPDATE users SET password = ?, password_token = NULL, token_expires_at = NULL WHERE id = ?")
-    ->execute([$hashedPassword, $user['id']]);
+// Simpan ke database
+$pdo->prepare("UPDATE users 
+    SET password_token = ?, token_expires_at = ? 
+    WHERE id = ?")
+->execute([$token, $expires, $user['id']]);
 
-// Auto login
-$_SESSION['user'] = [
-    'id' => $user['id'],
-    'name' => $user['name'],
-    'username' => $user['username'],
-    'role' => $user['role'],
-];
+// Link reset
+$resetLink = "http://yourdomain.com/modules/auth/reset_password.php?token=" . urlencode($token);
 
-// Audit log after session set
-writeAuditLog($pdo, 'PASSWORD_RESET', "User {$user['username']} reset password via email", $user['id'], $user['username'], $user['role']);
+// ✅ (OPTIONAL) Kirim email — kalau belum ada, bisa kamu sambung nanti
+/*
+mail($email, 'Reset Password', 
+    "Klik link berikut untuk reset password:\n\n$resetLink\n\nLink berlaku 1 jam."
+);
+*/
 
-header('Location: /../modules/dashboard/index.php');
+// Audit log
+writeAuditLog(
+    $pdo,
+    'FORGOT_PASSWORD',
+    "User {$user['username']} request reset password",
+    $user['id'],
+    $user['username'],
+    $user['role']
+);
+
+// Redirect sukses
+header('Location: forgot_password.php?success=' . urlencode('Link reset password sudah dikirim ke email.'));
 exit;
