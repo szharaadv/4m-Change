@@ -3,6 +3,9 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 requireLogin();
+// DEBUG SEMENTARA — hapus setelah selesai
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 $id = (int) ($_GET['id'] ?? 0);
 
