@@ -23,7 +23,7 @@ function ensureUploadPath(string $path): void
     }
 }
 
-function uploadFileSingle(?array $file, string $folder, array $allowedExt, int $maxSize = 5242880): array
+function uploadFileSingle(?array $file, string $folder, array $allowedExt, int $maxSize = 10485760): array
 {
     if (!isset($file) || !is_array($file)) {
         return ['success' => false, 'message' => 'File tidak ditemukan'];
@@ -131,4 +131,21 @@ function getNeedCount(PDO $pdo, string $role, int $userId): int
         return (int) $pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status IN ('Manager Approved','QC Approved')")->fetchColumn();
     }
     return 0;
+}
+
+function csrfToken(): string
+{
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function verifyCsrf(): void
+{
+    $token = $_POST['_csrf'] ?? '';
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', $token)) {
+        http_response_code(403);
+        die('Invalid CSRF token.');
+    }
 }

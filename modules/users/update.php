@@ -10,7 +10,7 @@ $name            = trim($_POST['name'] ?? '');
 $username        = trim($_POST['username'] ?? '');
 $email           = trim($_POST['email'] ?? '');
 $role            = $_POST['role'] ?? '';
-$password        = $_POST['password'] ?? '';
+$password        = trim($_POST['password'] ?? '');
 $passwordConfirm = $_POST['password_confirm'] ?? '';
 $categories      = $_POST['categories'] ?? [];
 

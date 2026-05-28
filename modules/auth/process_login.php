@@ -12,7 +12,6 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Support plain text password (dev) and hashed password (production)
 $valid = $user && (
-    $password === $user['password'] ||
     (strlen($user['password']) > 30 && password_verify($password, $user['password']))
 );
 
