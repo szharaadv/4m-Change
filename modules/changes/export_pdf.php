@@ -55,12 +55,16 @@ foreach ($approvalLogs as $log) {
 require_once '../../vendor/autoload.php';
 date_default_timezone_set('Asia/Jakarta');
 
+$tmpDir = __DIR__ . '/../../assets/tmp';
+if (!is_dir($tmpDir)) mkdir($tmpDir, 0777, true);
+
 $mpdf = new \Mpdf\Mpdf([
-    'margin_top' => 15,
+    'margin_top'    => 15,
     'margin_bottom' => 15,
-    'margin_left' => 15,
-    'margin_right' => 15,
-    'format' => 'A4',
+    'margin_left'   => 15,
+    'margin_right'  => 15,
+    'format'        => 'A4',
+    'tempDir'       => $tmpDir,
 ]);
 
 // Convert photos to base64 for PDF embedding
