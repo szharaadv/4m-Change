@@ -47,13 +47,12 @@ foreach ($photos as $p) {
 }
 
 $canApproveNow = canApprove($role, $data['workflow_status']);
-$statusOrder   = ['Draft'=>0,'Submitted'=>1,'Manager Approved'=>2,'QC Approved'=>3,'Closed'=>4,'Rejected'=>-1];
+$statusOrder   = ['Draft'=>0,'Submitted'=>1,'Manager Approved'=>2,'Closed'=>3,'Rejected'=>-1];
 $curOrder      = $statusOrder[$data['workflow_status']] ?? 0;
 
-$mgrApproval = $qcApproval = $qcFinal = null;
+$mgrApproval = $qcFinal = null;
 foreach ($approvalLogs as $log) {
     if ($log['step'] === 'manager')  $mgrApproval = $log;
-    if ($log['step'] === 'qc')       $qcApproval  = $log;
     if ($log['step'] === 'qc_final') $qcFinal     = $log;
 }
 
@@ -65,10 +64,9 @@ $actionBadge = ['CREATE'=>'secondary','UPDATE'=>'secondary','SUBMIT'=>'primary',
 $isRejected = $data['workflow_status'] === 'Rejected';
 
 $progressSteps = [
-    ['label' => 'Submitter',       'appr' => null,        'rejHere' => false],
-    ['label' => 'Manager Dept.',   'appr' => $mgrApproval,'rejHere' => $isRejected && $mgrApproval && $mgrApproval['status']==='Rejected'],
-    ['label' => 'QC',              'appr' => $qcApproval, 'rejHere' => $isRejected && $qcApproval  && $qcApproval['status']==='Rejected'],
-    ['label' => 'QC Final Submit', 'appr' => $qcFinal,    'rejHere' => false],
+    ['label' => 'Submitter',     'appr' => null,        'rejHere' => false],
+    ['label' => 'Manager Dept.', 'appr' => $mgrApproval,'rejHere' => $isRejected && $mgrApproval && $mgrApproval['status']==='Rejected'],
+    ['label' => 'QC Final',      'appr' => $qcFinal,    'rejHere' => $isRejected && $qcFinal && $qcFinal['status']==='Rejected'],
 ];
 
 function stepCircle(int $cur, int $order, ?array $appr): string {
@@ -118,8 +116,7 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                 $isDone   = !$isRejected && (
                     ($i === 0 && $curOrder >= 1) ||
                     ($i === 1 && $curOrder >= 2) ||
-                    ($i === 2 && $curOrder >= 3) ||
-                    ($i === 3 && $curOrder >= 4)
+                    ($i === 2 && $curOrder >= 3)
                 );
                 $isRejHere = $step['rejHere'];
 
@@ -127,9 +124,8 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                 elseif ($isDone)    $cls = 'apv-circle-done';
                 elseif (!$isRejected && (
                     ($i === 1 && $curOrder === 1) ||
-                    ($i === 2 && $curOrder === 2) ||
-                    ($i === 3 && $curOrder === 3)
-                ))                  $cls = 'apv-circle-active';
+                    ($i === 2 && $curOrder === 2)
+                ))                 $cls = 'apv-circle-active';
                 else                $cls = 'apv-circle-pending';
             ?>
             <div class="apv-step">
