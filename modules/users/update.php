@@ -3,23 +3,25 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['admin', 'superadmin']);
+requireRole(['superadmin']);
 
 $id              = (int)($_POST['id'] ?? 0);
 $name            = trim($_POST['name'] ?? '');
 $username        = trim($_POST['username'] ?? '');
 $email           = trim($_POST['email'] ?? '');
 $role            = $_POST['role'] ?? '';
+$department      = trim($_POST['department'] ?? '');
 $password        = trim($_POST['password'] ?? '');
 $passwordConfirm = $_POST['password_confirm'] ?? '';
 $categories      = $_POST['categories'] ?? [];
+$departments     = $_POST['departments'] ?? [];
 
 if (!$id || !$name || !$username || !$role) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Semua field wajib diisi.'));
     exit;
 }
 
-if (!in_array($role, ['admin', 'manager', 'qc'], true)) {
+if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc'], true)) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Role tidak valid.'));
     exit;
 }
@@ -46,31 +48,42 @@ if ($password !== '') {
 $validCats = ['Man', 'Material', 'Method', 'Machine'];
 $categories = array_filter($categories, fn($c) => in_array($c, $validCats, true));
 
+// Validate departments
+$validDepts = ['Production', 'Painting', 'MS1', 'MS2', 'CR', 'QC Incoming', 'QC Inhouse', 'QC Product', 'Picking Yard'];
+$departments = array_filter($departments, fn($d) => in_array($d, $validDepts, true));
+
 try {
     $pdo->beginTransaction();
 
     if ($password !== '') {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, password = ? WHERE id = ?")
-            ->execute([$name, $username, $email ?: null, $role, $hashedPassword, $id]);
+        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ?, password = ? WHERE id = ?")
+            ->execute([$name, $username, $email ?: null, $role, $department ?: null, $hashedPassword, $id]);
         writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role) — termasuk reset password");
     } else {
-        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ? WHERE id = ?")
-            ->execute([$name, $username, $email ?: null, $role, $id]);
+        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ? WHERE id = ?")
+            ->execute([$name, $username, $email ?: null, $role, $department ?: null, $id]);
         writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role)");
     }
 
     // Update category assignment
-    // Delete existing first
     $pdo->prepare("DELETE FROM category_managers WHERE user_id = ?")->execute([$id]);
-
-    // Insert new categories (only if role is manager)
     if ($role === 'manager' && !empty($categories)) {
         $insertCat = $pdo->prepare("INSERT INTO category_managers (category_4m, user_id) VALUES (?, ?)");
         foreach ($categories as $cat) {
             $insertCat->execute([$cat, $id]);
         }
-        writeAuditLog($pdo, 'USER_UPDATED', "Update kategori manager $username: " . implode(', ', $categories));
+        writeAuditLog($pdo, 'USER_UPDATED', "Update kategori 4M manager $username: " . implode(', ', $categories));
+    }
+
+    // Update department assignment
+    $pdo->prepare("DELETE FROM department_managers WHERE user_id = ?")->execute([$id]);
+    if ($role === 'manager' && !empty($departments)) {
+        $insertDept = $pdo->prepare("INSERT INTO department_managers (department, user_id) VALUES (?, ?)");
+        foreach ($departments as $dept) {
+            $insertDept->execute([$dept, $id]);
+        }
+        writeAuditLog($pdo, 'USER_UPDATED', "Update department manager $username: " . implode(', ', $departments));
     }
 
     $pdo->commit();

@@ -28,10 +28,9 @@ $role   = currentUserRole();
 $userId = currentUserId();
 
 $isManagerStep = $role === 'manager' && $cr['workflow_status'] === 'Submitted';
-$isQcStep      = $role === 'qc'      && $cr['workflow_status'] === 'Manager Approved';
-$isQcFinal     = $role === 'qc'      && $cr['workflow_status'] === 'QC Approved';
+$isQcFinal     = $role === 'qc'      && $cr['workflow_status'] === 'Manager Approved';
 
-if (!$isManagerStep && !$isQcStep && !$isQcFinal) {
+if (!$isManagerStep && !$isQcFinal) {
     header('Location: detail.php?id=' . $id . '&error=not_your_turn');
     exit;
 }
@@ -41,18 +40,13 @@ try {
 
     $changeNo  = $cr['change_no'];
     $detailUrl = APP_URL . "/modules/changes/detail.php?id=$id";
-    
+
     if ($action === 'approve') {
         if ($isManagerStep) {
             $newStatus  = 'Manager Approved';
             $step       = 'manager';
             $actionType = 'APPROVAL';
             $actionNote = 'Disetujui oleh Manager Department';
-        } elseif ($isQcStep) {
-            $newStatus  = 'QC Approved';
-            $step       = 'qc';
-            $actionType = 'APPROVAL';
-            $actionNote = 'Disetujui oleh QC';
         } else {
             $newStatus  = 'Closed';
             $step       = 'qc_final';
@@ -91,10 +85,10 @@ try {
             writeAuditLog($pdo, 'CHANGE_APPROVED', "Approve $changeNo → $newStatus (step: $step)");
         }
 
-        // Email notifications
         $noteRow = $note ? "<tr><td style='color:#888;padding:6px 0;font-size:12px'>Catatan</td><td style='padding:6px 0;font-size:12px'>$note</td></tr>" : '';
 
         if ($isManagerStep) {
+            // Manager approved → kirim ke semua QC
             $qcUsers  = getQcEmails($pdo);
             $bodyHtml = "
                 <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui oleh <strong>Manager Department</strong> dan menunggu review QC.</p>
@@ -111,24 +105,8 @@ try {
                 sendMail($u['email'], $u['name'], "[4M Change] Menunggu Review QC — $changeNo", mailTemplate("Permohonan Siap Review QC", $bodyHtml));
             }
 
-        } elseif ($isQcStep) {
-            $qcUsers  = getQcEmails($pdo);
-            $bodyHtml = "
-                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui QC tahap pertama dan menunggu <strong>Final Submit QC</strong>.</p>
-                <table style='width:100%;border-collapse:collapse;font-size:13px'>
-                    <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
-                    <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
-                    <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>{$cr['category_4m']}</td></tr>
-                    $noteRow
-                </table>
-                <div style='margin:20px 0'>
-                    <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Final Submit</a>
-                </div>";
-            foreach ($qcUsers as $u) {
-                sendMail($u['email'], $u['name'], "[4M Change] Menunggu Final Submit QC — $changeNo", mailTemplate("QC Approved — Final Submit", $bodyHtml));
-            }
-
         } else {
+            // QC Final → Closed → kirim ke submitter
             $submitter = getSubmitterEmail($pdo, $cr['created_by']);
             if ($submitter) {
                 $bodyHtml = "
@@ -148,7 +126,8 @@ try {
         }
 
     } else {
-        $step = $isManagerStep ? 'manager' : ($isQcStep ? 'qc' : 'qc_final');
+        // REJECT
+        $step = $isManagerStep ? 'manager' : 'qc_final';
 
         $pdo->prepare("UPDATE change_requests SET
             workflow_status = 'Rejected',
@@ -178,7 +157,6 @@ try {
 
         $pdo->commit();
 
-        // Audit log
         writeAuditLog($pdo, 'CHANGE_REJECTED', "Reject $changeNo (step: $step)" . ($note ? " — Alasan: $note" : ''));
 
         $submitter = getSubmitterEmail($pdo, $cr['created_by']);

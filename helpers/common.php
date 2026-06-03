@@ -92,14 +92,11 @@ function judgeBadgeClass(string $judge): string
     };
 }
 
-function canApprove(string $role, string $workflowStatus): bool
+function canApprove(string $role, string $status): bool
 {
-    return match ($workflowStatus) {
-        'Submitted'        => $role === 'manager',
-        'Manager Approved' => $role === 'qc',
-        'QC Approved'      => $role === 'qc',
-        default            => false,
-    };
+    if ($role === 'manager' && $status === 'Submitted')       return true;
+    if ($role === 'qc'      && $status === 'Manager Approved') return true;
+    return false;
 }
 
 function getApprovalStep(string $workflowStatus): string

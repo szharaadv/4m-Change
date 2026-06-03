@@ -84,7 +84,6 @@ function mailTemplate(string $title, string $body, string $accentColor = '#D0021
 function getManagerEmails(PDO $pdo, string $category = ''): array
 {
     if ($category) {
-        // Get managers assigned to this category
         $stmt = $pdo->prepare("
             SELECT u.name, u.email
             FROM users u
@@ -97,8 +96,35 @@ function getManagerEmails(PDO $pdo, string $category = ''): array
         $stmt->execute([$category]);
         $result = $stmt->fetchAll();
 
-        // Fallback: if no manager assigned to this category, get all managers
         if (empty($result)) {
+            return $pdo->query("SELECT name, email FROM users WHERE role = 'manager' AND email != '' AND is_active = 1")->fetchAll();
+        }
+
+        return $result;
+    }
+
+    return $pdo->query("SELECT name, email FROM users WHERE role = 'manager' AND email != '' AND is_active = 1")->fetchAll();
+}
+
+function getManagerEmailsByDepartment(PDO $pdo, string $department = ''): array
+{
+    if ($department) {
+        // Cari manager yang handle department ini
+        $stmt = $pdo->prepare("
+            SELECT u.name, u.email
+            FROM users u
+            JOIN department_managers dm ON dm.user_id = u.id
+            WHERE u.role = 'manager'
+              AND u.email != ''
+              AND u.is_active = 1
+              AND dm.department = ?
+        ");
+        $stmt->execute([$department]);
+        $result = $stmt->fetchAll();
+
+        // Fallback: kalau tidak ada manager assigned ke dept ini, kirim ke semua manager
+        if (empty($result)) {
+            error_log('[Mailer] No manager assigned for department: ' . $department . ' — fallback to all managers');
             return $pdo->query("SELECT name, email FROM users WHERE role = 'manager' AND email != '' AND is_active = 1")->fetchAll();
         }
 
@@ -115,7 +141,7 @@ function getQcEmails(PDO $pdo): array
 
 function getSubmitterEmail(PDO $pdo, int $userId): ?array
 {
-    $stmt = $pdo->prepare("SELECT name, email FROM users WHERE id = ? AND email != '' LIMIT 1");
+    $stmt = $pdo->prepare("SELECT name, email, department FROM users WHERE id = ? AND email != '' LIMIT 1");
     $stmt->execute([$userId]);
     return $stmt->fetch() ?: null;
 }

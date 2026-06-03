@@ -110,9 +110,15 @@ try {
 
     // Notifikasi email
     if ($wfStatus === 'Submitted') {
-        $submitter = getSubmitterEmail($pdo, currentUserId());
-        $mgrUsers = getManagerEmails($pdo, $category);
-        $submitterName = $submitter['name'] ?? 'Submitter';
+        $submitter      = getSubmitterEmail($pdo, currentUserId());
+        $submitterName  = $submitter['name'] ?? 'Submitter';
+        $submitterDept  = $submitter['department'] ?? '';
+
+        // Routing: cari manager berdasarkan department submitter
+        // Fallback ke category 4M jika dept tidak ada
+        $mgrUsers = !empty($submitterDept)
+            ? getManagerEmailsByDepartment($pdo, $submitterDept)
+            : getManagerEmails($pdo, $category);
 
         $bodyHtml = "
             <p style='color:#444;font-size:13px;margin:0 0 16px'>Ada permohonan 4M Change baru yang membutuhkan approval <strong>Manager Department</strong>.</p>
@@ -121,6 +127,7 @@ try {
                 <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>$partName</td></tr>
                 <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>$category</td></tr>
                 <tr><td style='color:#888;padding:6px 0'>Diajukan oleh</td><td style='padding:6px 0'>$submitterName</td></tr>
+                <tr><td style='color:#888;padding:6px 0'>Department</td><td style='padding:6px 0'><?= $submitterDept ?: '—' ?></td></tr>    
                 <tr><td style='color:#888;padding:6px 0'>Status</td><td style='padding:6px 0;color:#D0021B;font-weight:600'>Menunggu Approval Manager</td></tr>
             </table>
             <div style='margin:20px 0'>
