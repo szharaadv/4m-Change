@@ -47,6 +47,14 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
 <div class="alert alert-danger"><?= e($_GET['error']) ?></div>
 <?php endif; ?>
 
+<?php if (!$managers): ?>
+<div class="alert alert-warning">Belum ada user dengan role <strong>manager</strong>. Tambahkan dulu di halaman Users.</div>
+<?php endif; ?>
+
+<?php if (!$qcUsers): ?>
+<div class="alert alert-warning">Belum ada user dengan role <strong>qc</strong>. Tambahkan dulu di halaman Users.</div>
+<?php endif; ?>
+
 <form action="save.php" method="POST">
     <input type="hidden" name="_csrf" value="<?= csrfToken() ?>">
 
@@ -63,40 +71,54 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
             <tbody>
                 <?php foreach ($departments as $dept): ?>
                 <tr>
-                    <td style="font-weight:600;font-size:13px"><?= e($dept) ?></td>
-                    <td>
+                    <td style="font-weight:600;font-size:13px;vertical-align:top;padding-top:14px">
+                        <?= e($dept) ?>
+                    </td>
+                    <td style="vertical-align:top;padding-top:12px">
+                        <?php if ($managers): ?>
                         <div class="d-flex gap-12" style="flex-wrap:wrap">
                             <?php foreach ($managers as $mgr): ?>
-                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;
+                                padding:6px 12px;border:1.5px solid <?= in_array($mgr['id'], $deptMgrs[$dept] ?? []) ? 'var(--accent)' : 'var(--border)' ?>;
+                                border-radius:var(--radius);
+                                background:<?= in_array($mgr['id'], $deptMgrs[$dept] ?? []) ? 'var(--accent-light)' : '#fff' ?>">
                                 <input type="checkbox"
                                     name="routing[<?= e($dept) ?>][manager][]"
                                     value="<?= $mgr['id'] ?>"
                                     <?= in_array($mgr['id'], $deptMgrs[$dept] ?? []) ? 'checked' : '' ?>
                                     style="accent-color:var(--accent)">
-                                <?= e($mgr['name']) ?>
+                                <span style="font-weight:500;color:<?= in_array($mgr['id'], $deptMgrs[$dept] ?? []) ? 'var(--accent)' : 'var(--text)' ?>">
+                                    <?= e($mgr['name']) ?>
+                                </span>
                             </label>
                             <?php endforeach; ?>
-                            <?php if (!$managers): ?>
-                            <span style="color:var(--muted);font-size:12px">Belum ada user manager</span>
-                            <?php endif; ?>
                         </div>
+                        <?php else: ?>
+                        <span style="color:var(--muted);font-size:12px">— Belum ada manager</span>
+                        <?php endif; ?>
                     </td>
-                    <td>
+                    <td style="vertical-align:top;padding-top:12px">
+                        <?php if ($qcUsers): ?>
                         <div class="d-flex gap-12" style="flex-wrap:wrap">
                             <?php foreach ($qcUsers as $qc): ?>
-                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;
+                                padding:6px 12px;border:1.5px solid <?= in_array($qc['id'], $deptQcs[$dept] ?? []) ? 'var(--accent)' : 'var(--border)' ?>;
+                                border-radius:var(--radius);
+                                background:<?= in_array($qc['id'], $deptQcs[$dept] ?? []) ? 'var(--accent-light)' : '#fff' ?>">
                                 <input type="checkbox"
                                     name="routing[<?= e($dept) ?>][qc][]"
                                     value="<?= $qc['id'] ?>"
                                     <?= in_array($qc['id'], $deptQcs[$dept] ?? []) ? 'checked' : '' ?>
                                     style="accent-color:var(--accent)">
-                                <?= e($qc['name']) ?>
+                                <span style="font-weight:500;color:<?= in_array($qc['id'], $deptQcs[$dept] ?? []) ? 'var(--accent)' : 'var(--text)' ?>">
+                                    <?= e($qc['name']) ?>
+                                </span>
                             </label>
                             <?php endforeach; ?>
-                            <?php if (!$qcUsers): ?>
-                            <span style="color:var(--muted);font-size:12px">Belum ada user QC</span>
-                            <?php endif; ?>
                         </div>
+                        <?php else: ?>
+                        <span style="color:var(--muted);font-size:12px">— Belum ada QC</span>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

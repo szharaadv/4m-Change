@@ -8,13 +8,6 @@ include '../../templates/navbar.php';
 
 $users = $pdo->query("SELECT * FROM users ORDER BY role ASC, name ASC")->fetchAll();
 
-// Get all category assignments
-$catRows = $pdo->query("SELECT user_id, category_4m FROM category_managers")->fetchAll();
-$catMap  = [];
-foreach ($catRows as $row) {
-    $catMap[$row['user_id']][] = $row['category_4m'];
-}
-
 $roleBadge = [
     'admin' => 'badge-manager',
     'manager'    => 'badge-submitted',
@@ -22,12 +15,6 @@ $roleBadge = [
     'admin'      => 'badge-draft',
 ];
 
-$catColor = [
-    'Man'      => '#2563eb',
-    'Material' => '#d97706',
-    'Method'   => '#7c3aed',
-    'Machine'  => '#0891b2',
-];
 ?>
 
 <div class="page-header">
@@ -35,7 +22,20 @@ $catColor = [
         <div class="page-title">User Management</div>
         <div class="page-sub">Kelola semua akun pengguna sistem</div>
     </div>
-    <a href="create.php" class="btn btn-primary">+ Add User</a>
+    <div class="d-flex gap-8">
+        <?php
+        $pendingCount = count(array_filter($users, fn($u) => !$u['is_active'] && $u['email']));
+        ?>
+        <?php if ($pendingCount > 0): ?>
+        <form method="POST" action="resend_all.php"
+            onsubmit="return confirm('Kirim email setup ke <?= $pendingCount ?> user yang belum aktif?')">
+            <button type="submit" class="btn" style="background:#eff6ff;color:#2563eb;border-color:#93c5fd">
+                📧 Resend All Pending (<?= $pendingCount ?>)
+            </button>
+        </form>
+        <?php endif; ?>
+        <a href="create.php" class="btn btn-primary">+ Add User</a>
+    </div>
 </div>
 
 <?php if (isset($_GET['success'])): ?>
@@ -45,9 +45,10 @@ $catColor = [
         'created'      => 'User berhasil ditambahkan.',
         'updated'      => 'User berhasil diperbarui.',
         'deleted'      => 'User berhasil dihapus.',
-        'email_resent' => 'Email setup berhasil dikirim ulang.',
+        'email_resent' => $_GET['msg'] ?? 'Email setup berhasil dikirim ulang.',
     ];
     echo $msg[$_GET['success']] ?? 'Berhasil.';
+
     ?>
 </div>
 <?php endif; ?>
@@ -68,7 +69,7 @@ $catColor = [
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
-                <th>Category 4M</th>
+                <th>Department</th>
                 <th>Status</th>
                 <th>Action</th>
             </tr>
@@ -91,29 +92,8 @@ $catColor = [
                 <td class="mono"><?= e($u['username']) ?></td>
                 <td style="color:var(--muted);font-size:12px"><?= e($u['email'] ?: '—') ?></td>
                 <td><span class="badge <?= $roleBadge[$u['role']] ?? 'badge-draft' ?>"><?= e($u['role']) ?></span></td>
-                <td>
-                    <?php if ($u['role'] === 'manager' && !empty($catMap[$u['id']])): ?>
-                    <div style="display:flex;gap:4px;flex-wrap:wrap">
-                        <?php foreach ($catMap[$u['id']] as $cat): ?>
-                        <span style="
-                            display:inline-block;
-                            padding:2px 8px;
-                            border-radius:4px;
-                            font-size:10px;
-                            font-weight:600;
-                            font-family:var(--mono);
-                            background:<?= $catColor[$cat] ?? '#888' ?>20;
-                            color:<?= $catColor[$cat] ?? '#888' ?>
-                        "><?= $cat ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php elseif ($u['role'] === 'manager'): ?>
-                    <span style="color:var(--muted);font-size:11px">— Belum diassign</span>
-                    <?php else: ?>
-                    <span style="color:var(--muted);font-size:11px">—</span>
-                    <?php endif; ?>
-                </td>
-                <td>
+                <td style="font-size:12px;color:var(--muted)"><?= e($u['department'] ?: '—') ?></td>
+                                <td>
                     <?php if ($u['is_active']): ?>
                     <span class="badge badge-closed">Active</span>
                     <?php else: ?>

@@ -7,7 +7,6 @@ $is_manager = in_array(currentUserRole(), ['manager', 'qc']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
-$users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','manager','qc') ORDER BY name ASC")->fetchAll();
 ?>
 
 <div class="page-header">
@@ -42,13 +41,10 @@ $users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','manager
         <div class="section-title"><span class="section-dot"></span>Basic Info</div>
         <div class="d-grid grid-2 gap-16">
             <div>
-                <label class="form-label">PIC <span class="required">*</span></label>
-                <select name="pic_id" class="form-control" required>
-                    <option value="">Pilih PIC...</option>
-                    <?php foreach ($users as $u): ?>
-                    <option value="<?= $u['id'] ?>"><?= e($u['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label class="form-label">PIC</label>
+                <input type="text" class="form-control" value="<?= e(currentUser()['name']) ?>" disabled style="background:#f5f5f5;color:var(--muted)">
+                <input type="hidden" name="pic_id" value="<?= currentUserId() ?>">
+                <div class="form-hint" style="margin-top:4px">Otomatis diisi dengan nama kamu.</div>
             </div>
             <div>
                 <label class="form-label">Part No</label>

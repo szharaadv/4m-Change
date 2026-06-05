@@ -19,4 +19,5 @@ try {
     die('Database Connection Failed: ' . htmlspecialchars($e->getMessage()));
 }
 
-define('APP_URL', 'https://4m-change.yadin.com');
+$isLocal = in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1']);
+define('APP_URL', $isLocal ? 'http://localhost/4m-change' : 'https://4m-change.yadin.com');

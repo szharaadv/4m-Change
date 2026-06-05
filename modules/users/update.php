@@ -13,7 +13,6 @@ $role            = $_POST['role'] ?? '';
 $department      = trim($_POST['department'] ?? '');
 $password        = trim($_POST['password'] ?? '');
 $passwordConfirm = $_POST['password_confirm'] ?? '';
-$categories      = $_POST['categories'] ?? [];
 $departments     = $_POST['departments'] ?? [];
 
 if (!$id || !$name || !$username || !$role) {
@@ -44,10 +43,6 @@ if ($password !== '') {
     }
 }
 
-// Validate categories
-$validCats = ['Man', 'Material', 'Method', 'Machine'];
-$categories = array_filter($categories, fn($c) => in_array($c, $validCats, true));
-
 // Validate departments
 $validDepts = ['Production', 'Painting', 'MS1', 'MS2', 'CR', 'QC Incoming', 'QC Inhouse', 'QC Product', 'Picking Yard'];
 $departments = array_filter($departments, fn($d) => in_array($d, $validDepts, true));
@@ -66,20 +61,10 @@ try {
         writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role)");
     }
 
-    // Update category assignment
-    $pdo->prepare("DELETE FROM category_managers WHERE user_id = ?")->execute([$id]);
-    if ($role === 'manager' && !empty($categories)) {
-        $insertCat = $pdo->prepare("INSERT INTO category_managers (category_4m, user_id) VALUES (?, ?)");
-        foreach ($categories as $cat) {
-            $insertCat->execute([$cat, $id]);
-        }
-        writeAuditLog($pdo, 'USER_UPDATED', "Update kategori 4M manager $username: " . implode(', ', $categories));
-    }
-
     // Update department assignment
-    $pdo->prepare("DELETE FROM department_managers WHERE user_id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM category_managers WHERE user_id = ?")->execute([$id]);
     if ($role === 'manager' && !empty($departments)) {
-        $insertDept = $pdo->prepare("INSERT INTO department_managers (department, user_id) VALUES (?, ?)");
+        $insertDept = $pdo->prepare("INSERT INTO department_managers (department, manager_id) VALUES (?, ?)");
         foreach ($departments as $dept) {
             $insertDept->execute([$dept, $id]);
         }
