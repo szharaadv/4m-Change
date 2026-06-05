@@ -11,16 +11,16 @@ $username        = trim($_POST['username'] ?? '');
 $email           = trim($_POST['email'] ?? '');
 $role            = $_POST['role'] ?? '';
 $department      = trim($_POST['department'] ?? '');
+$isActive        = (int)($_POST['is_active'] ?? 1);
 $password        = trim($_POST['password'] ?? '');
 $passwordConfirm = $_POST['password_confirm'] ?? '';
-$departments     = $_POST['departments'] ?? [];
 
 if (!$id || !$name || !$username || !$role) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Semua field wajib diisi.'));
     exit;
 }
 
-if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc'], true)) {
+if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc', 'qc_prod'], true)) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Role tidak valid.'));
     exit;
 }
@@ -43,32 +43,18 @@ if ($password !== '') {
     }
 }
 
-// Validate departments
-$validDepts = ['Production', 'Painting', 'MS1', 'MS2', 'CR', 'QC Incoming', 'QC Inhouse', 'QC Product', 'Picking Yard'];
-$departments = array_filter($departments, fn($d) => in_array($d, $validDepts, true));
-
 try {
     $pdo->beginTransaction();
 
     if ($password !== '') {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ?, password = ? WHERE id = ?")
-            ->execute([$name, $username, $email ?: null, $role, $department ?: null, $hashedPassword, $id]);
+        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ?, is_active = ?, password = ? WHERE id = ?")
+            ->execute([$name, $username, $email ?: null, $role, $department ?: null, $isActive, $hashedPassword, $id]);
         writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role) — termasuk reset password");
     } else {
-        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ? WHERE id = ?")
-            ->execute([$name, $username, $email ?: null, $role, $department ?: null, $id]);
+        $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ?, is_active = ? WHERE id = ?")
+            ->execute([$name, $username, $email ?: null, $role, $department ?: null, $isActive, $id]);
         writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role)");
-    }
-
-    // Update department assignment
-    $pdo->prepare("DELETE FROM category_managers WHERE user_id = ?")->execute([$id]);
-    if ($role === 'manager' && !empty($departments)) {
-        $insertDept = $pdo->prepare("INSERT INTO department_managers (department, manager_id) VALUES (?, ?)");
-        foreach ($departments as $dept) {
-            $insertDept->execute([$dept, $id]);
-        }
-        writeAuditLog($pdo, 'USER_UPDATED', "Update department manager $username: " . implode(', ', $departments));
     }
 
     $pdo->commit();
