@@ -5,6 +5,7 @@ require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
 requireLogin();
+verifyCsrf();
 
 $id     = (int)($_POST['id'] ?? 0);
 $action = $_POST['action'] ?? '';
@@ -27,10 +28,30 @@ if (!$cr) {
 $role   = currentUserRole();
 $userId = currentUserId();
 
-$isManagerStep = $role === 'manager' && $cr['workflow_status'] === 'Submitted';
-$isQcFinal     = $role === 'qc'      && $cr['workflow_status'] === 'Manager Approved';
+$isManagerStep = false;
+$isQcStep      = false;
 
-if (!$isManagerStep && !$isQcFinal) {
+if ($role === 'manager' && $cr['workflow_status'] === 'Submitted') {
+    $chkStmt = $pdo->prepare("
+        SELECT 1 FROM users u
+        JOIN department_managers dm ON dm.department = u.department AND dm.manager_id = ?
+        WHERE u.id = ? LIMIT 1
+    ");
+    $chkStmt->execute([$userId, $cr['created_by']]);
+    $isManagerStep = (bool)$chkStmt->fetch();
+}
+
+if ($role === 'qc' && $cr['workflow_status'] === 'Manager Approved') {
+    $chkStmt = $pdo->prepare("
+        SELECT 1 FROM users u
+        JOIN department_qc dq ON dq.department = u.department AND dq.qc_id = ?
+        WHERE u.id = ? LIMIT 1
+    ");
+    $chkStmt->execute([$userId, $cr['created_by']]);
+    $isQcStep = (bool)$chkStmt->fetch();
+}
+
+if (!$isManagerStep && !$isQcStep) {
     header('Location: detail.php?id=' . $id . '&error=not_your_turn');
     exit;
 }
@@ -42,24 +63,25 @@ try {
     $detailUrl = APP_URL . "/modules/changes/detail.php?id=$id";
 
     if ($action === 'approve') {
+
         if ($isManagerStep) {
             $newStatus  = 'Manager Approved';
             $step       = 'manager';
             $actionType = 'APPROVAL';
             $actionNote = 'Disetujui oleh Manager Department';
         } else {
-            $newStatus  = 'Closed';
-            $step       = 'qc_final';
-            $actionType = 'CLOSED';
-            $actionNote = 'Final submit oleh QC — permohonan ditutup';
+            $newStatus  = 'QC Approved';
+            $step       = 'qc';
+            $actionType = 'APPROVAL';
+            $actionNote = 'Disetujui oleh QC';
         }
 
         $pdo->prepare("UPDATE change_requests SET
-            workflow_status = ?,
-            updated_by = ?,
-            judge_status = ?,
+            workflow_status  = ?,
+            updated_by       = ?,
+            judge_status     = ?,
             confirm_customer = ?,
-            evidence_note = ?
+            evidence_note    = ?
             WHERE id = ?")
             ->execute([
                 $newStatus,
@@ -67,7 +89,7 @@ try {
                 $_POST['judge_status']     ?? $cr['judge_status'],
                 $_POST['confirm_customer'] ?? $cr['confirm_customer'],
                 trim($_POST['evidence_note'] ?? '') ?: $cr['evidence_note'],
-                $id
+                $id,
             ]);
 
         $pdo->prepare("INSERT INTO change_approvals (change_request_id, step, approver_id, status, note) VALUES (?, ?, ?, 'Approved', ?)")
@@ -78,20 +100,24 @@ try {
 
         $pdo->commit();
 
-        // Audit log
-        if ($newStatus === 'Closed') {
-            writeAuditLog($pdo, 'CHANGE_CLOSED', "Final submit (Closed) — $changeNo");
-        } else {
-            writeAuditLog($pdo, 'CHANGE_APPROVED', "Approve $changeNo → $newStatus (step: $step)");
-        }
+        writeAuditLog($pdo, 'CHANGE_APPROVED', "Approve $changeNo → $newStatus (step: $step)");
 
-        $noteRow = $note ? "<tr><td style='color:#888;padding:6px 0;font-size:12px'>Catatan</td><td style='padding:6px 0;font-size:12px'>$note</td></tr>" : '';
+        $noteRow = $note ? "<tr><td style='color:#888;padding:6px 0;font-size:12px'>Catatan</td><td style='padding:6px 0;font-size:12px'>" . htmlspecialchars($note) . "</td></tr>" : '';
 
         if ($isManagerStep) {
-            // Manager approved → kirim ke semua QC
-            $qcUsers  = getQcEmails($pdo);
+            // Ambil dept submitter → routing ke QC yang handle dept itu
+            $deptStmt = $pdo->prepare("SELECT department FROM users WHERE id = ?");
+            $deptStmt->execute([$cr['created_by']]);
+            $dept = $deptStmt->fetchColumn() ?? '';
+
+            $qcUsers = getDeptQc($pdo, $dept);
+            if (empty($qcUsers)) {
+                // Fallback: kirim ke semua QC
+                $qcUsers = $pdo->query("SELECT name, email FROM users WHERE role='qc' AND is_active=1 AND email != ''")->fetchAll();
+            }
+
             $bodyHtml = "
-                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui oleh <strong>Manager Department</strong> dan menunggu review QC.</p>
+                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui oleh <strong>Manager Department</strong> dan menunggu approval QC.</p>
                 <table style='width:100%;border-collapse:collapse;font-size:13px'>
                     <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
                     <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
@@ -101,43 +127,44 @@ try {
                 <div style='margin:20px 0'>
                     <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Approve</a>
                 </div>";
+
             foreach ($qcUsers as $u) {
-                sendMail($u['email'], $u['name'], "[4M Change] Menunggu Review QC — $changeNo", mailTemplate("Permohonan Siap Review QC", $bodyHtml));
+                sendMail($u['email'], $u['name'], "[4M Change] Menunggu Approval QC — $changeNo", mailTemplate("Permohonan Siap Review QC", $bodyHtml));
             }
 
         } else {
-            // QC Final → Closed → kirim ke submitter
+            // QC Approved → kirim notif ke submitter
             $submitter = getSubmitterEmail($pdo, $cr['created_by']);
             if ($submitter) {
                 $bodyHtml = "
-                    <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change telah <strong style='color:#16a34a'>selesai diproses (Closed)</strong>.</p>
+                    <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change telah <strong style='color:#16a34a'>disetujui QC (QC Approved)</strong>.</p>
                     <table style='width:100%;border-collapse:collapse;font-size:13px'>
                         <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
                         <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
                         <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>{$cr['category_4m']}</td></tr>
-                        <tr><td style='color:#888;padding:6px 0'>Status</td><td style='padding:6px 0;color:#16a34a;font-weight:600'>Closed ✓</td></tr>
+                        <tr><td style='color:#888;padding:6px 0'>Status</td><td style='padding:6px 0;color:#16a34a;font-weight:600'>QC Approved ✓</td></tr>
                         $noteRow
                     </table>
                     <div style='margin:20px 0'>
                         <a href='$detailUrl' style='background:#16a34a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail</a>
                     </div>";
-                sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan Selesai (Closed) — $changeNo", mailTemplate("Permohonan Closed", $bodyHtml, '#16a34a'));
+                sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan QC Approved — $changeNo", mailTemplate("QC Approved", $bodyHtml, '#16a34a'));
             }
         }
 
     } else {
         // REJECT
-        $step = $isManagerStep ? 'manager' : 'qc_final';
+        $step = $isManagerStep ? 'manager' : 'qc';
 
         $pdo->prepare("UPDATE change_requests SET
-            workflow_status = 'Rejected',
-            rejected_by = ?,
-            rejected_at = NOW(),
-            rejection_note = ?,
-            updated_by = ?,
-            judge_status = ?,
+            workflow_status  = 'Rejected',
+            rejected_by      = ?,
+            rejected_at      = NOW(),
+            rejection_note   = ?,
+            updated_by       = ?,
+            judge_status     = ?,
             confirm_customer = ?,
-            evidence_note = ?
+            evidence_note    = ?
             WHERE id = ?")
             ->execute([
                 $userId,
@@ -146,7 +173,7 @@ try {
                 $_POST['judge_status']     ?? $cr['judge_status'],
                 $_POST['confirm_customer'] ?? $cr['confirm_customer'],
                 trim($_POST['evidence_note'] ?? '') ?: $cr['evidence_note'],
-                $id
+                $id,
             ]);
 
         $pdo->prepare("INSERT INTO change_approvals (change_request_id, step, approver_id, status, note) VALUES (?, ?, ?, 'Rejected', ?)")

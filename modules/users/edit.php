@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requireRole(['superadmin', 'admin']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -12,18 +12,8 @@ $stmt->execute([$id]);
 $u = $stmt->fetch();
 if (!$u) die('User not found.');
 
-// Get current assigned categories
-$catStmt = $pdo->prepare("SELECT category_4m FROM category_managers WHERE user_id = ?");
-$catStmt->execute([$id]);
-$assignedCats = $catStmt->fetchAll(PDO::FETCH_COLUMN);
-
-// Get current assigned departments
-$deptStmt = $pdo->prepare("SELECT department FROM department_managers WHERE user_id = ?");
-$deptStmt->execute([$id]);
-$assignedDepts = $deptStmt->fetchAll(PDO::FETCH_COLUMN);
-
 $departments = [
-    'Production',
+    'Production (Assy, TR, PK)',
     'Painting',
     'MS1',
     'MS2',
@@ -48,6 +38,7 @@ $departments = [
 <?php endif; ?>
 
 <form action="update.php" method="POST">
+    <input type="hidden" name="_csrf" value="<?= csrfToken() ?>">
     <input type="hidden" name="id" value="<?= $u['id'] ?>">
 
     <div class="form-section">
@@ -68,54 +59,34 @@ $departments = [
             </div>
             <div>
                 <label class="form-label">Role <span class="required">*</span></label>
-                <select name="role" class="form-control" required id="roleSelect" onchange="toggleSections()">
-                    <?php foreach (['superadmin', 'admin', 'manager', 'qc'] as $r): ?>
+                <select name="role" class="form-control" required>
+                    <?php foreach (['admin', 'manager', 'qc', 'qc_prod'] as $r): ?>
                     <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
                     <?php endforeach; ?>
                 </select>
+                <div class="form-hint" style="margin-top:4px">Role superadmin tidak dapat diubah lewat form ini.</div>
             </div>
             <div>
                 <label class="form-label">Department</label>
                 <select name="department" class="form-control">
                     <option value="">— Tidak ada —</option>
                     <?php foreach ($departments as $dept): ?>
-                    <option value="<?= $dept ?>" <?= ($u['department'] ?? '') === $dept ? 'selected' : '' ?>><?= $dept ?></option>
+                    <option value="<?= e($dept) ?>" <?= ($u['department'] ?? '') === $dept ? 'selected' : '' ?>>
+                        <?= e($dept) ?>
+                    </option>
                     <?php endforeach; ?>
                 </select>
-                <div class="form-hint" style="margin-top:4px">Department tempat user bekerja.</div>
+                <div class="form-hint" style="margin-top:4px">
+                    Department tempat user bekerja — dipakai untuk routing approval.
+                </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Category 4M Assignment — hanya untuk manager -->
-    <div class="form-section" id="categorySection" style="<?= $u['role'] !== 'manager' ? 'display:none' : '' ?>">
-        <div class="section-title"><span class="section-dot"></span>Category 4M Assignment</div>
-        <div class="form-hint" style="margin-bottom:12px">Pilih kategori 4M yang ditangani manager ini.</div>
-        <div class="d-flex gap-16" style="flex-wrap:wrap">
-            <?php foreach (['Man', 'Material', 'Method', 'Machine'] as $cat): ?>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1.5px solid <?= in_array($cat, $assignedCats) ? 'var(--accent)' : 'var(--border)' ?>;border-radius:var(--radius);background:<?= in_array($cat, $assignedCats) ? 'var(--accent-light)' : '#fff' ?>">
-                <input type="checkbox" name="categories[]" value="<?= $cat ?>"
-                    <?= in_array($cat, $assignedCats) ? 'checked' : '' ?>
-                    style="accent-color:var(--accent)">
-                <span style="font-size:13px;font-weight:500;color:<?= in_array($cat, $assignedCats) ? 'var(--accent)' : 'var(--text)' ?>"><?= $cat ?></span>
-            </label>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <!-- Department Assignment — hanya untuk manager -->
-    <div class="form-section" id="deptSection" style="<?= $u['role'] !== 'manager' ? 'display:none' : '' ?>">
-        <div class="section-title"><span class="section-dot"></span>Department Assignment</div>
-        <div class="form-hint" style="margin-bottom:12px">Pilih department yang ditangani manager ini untuk routing approval email.</div>
-        <div class="d-flex gap-16" style="flex-wrap:wrap">
-            <?php foreach ($departments as $dept): ?>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1.5px solid <?= in_array($dept, $assignedDepts) ? 'var(--accent)' : 'var(--border)' ?>;border-radius:var(--radius);background:<?= in_array($dept, $assignedDepts) ? 'var(--accent-light)' : '#fff' ?>">
-                <input type="checkbox" name="departments[]" value="<?= $dept ?>"
-                    <?= in_array($dept, $assignedDepts) ? 'checked' : '' ?>
-                    style="accent-color:var(--accent)">
-                <span style="font-size:13px;font-weight:500;color:<?= in_array($dept, $assignedDepts) ? 'var(--accent)' : 'var(--text)' ?>"><?= $dept ?></span>
-            </label>
-            <?php endforeach; ?>
+            <div>
+                <label class="form-label">Status</label>
+                <select name="is_active" class="form-control">
+                    <option value="1" <?= $u['is_active'] ? 'selected' : '' ?>>Active</option>
+                    <option value="0" <?= !$u['is_active'] ? 'selected' : '' ?>>Inactive</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -139,14 +110,5 @@ $departments = [
         <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
     </div>
 </form>
-
-<script>
-function toggleSections() {
-    const role = document.getElementById('roleSelect').value;
-    const isManager = role === 'manager';
-    document.getElementById('categorySection').style.display = isManager ? '' : 'none';
-    document.getElementById('deptSection').style.display = isManager ? '' : 'none';
-}
-</script>
 
 <?php include '../../templates/footer.php'; ?>

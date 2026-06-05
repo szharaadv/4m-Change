@@ -110,34 +110,40 @@ try {
 
     // Notifikasi email
     if ($wfStatus === 'Submitted') {
-        $submitter      = getSubmitterEmail($pdo, currentUserId());
-        $submitterName  = $submitter['name'] ?? 'Submitter';
-        $submitterDept  = $submitter['department'] ?? '';
+    $detailUrl     = APP_URL . "/modules/changes/detail.php?id=$changeId";
+    $submitter     = getSubmitterEmail($pdo, currentUserId());
+    $submitterName = $submitter['name'] ?? 'Submitter';
 
-        // Routing: cari manager berdasarkan department submitter
-        // Fallback ke category 4M jika dept tidak ada
-        $mgrUsers = !empty($submitterDept)
-            ? getManagerEmailsByDepartment($pdo, $submitterDept)
-            : getManagerEmails($pdo, $category);
+    // Ambil department submitter
+    $deptStmt = $pdo->prepare("SELECT department FROM users WHERE id = ?");
+    $deptStmt->execute([currentUserId()]);
+    $submitterDept = $deptStmt->fetchColumn() ?? '';
 
-        $bodyHtml = "
-            <p style='color:#444;font-size:13px;margin:0 0 16px'>Ada permohonan 4M Change baru yang membutuhkan approval <strong>Manager Department</strong>.</p>
-            <table style='width:100%;border-collapse:collapse;font-size:13px'>
-                <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
-                <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>$partName</td></tr>
-                <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>$category</td></tr>
-                <tr><td style='color:#888;padding:6px 0'>Diajukan oleh</td><td style='padding:6px 0'>$submitterName</td></tr>
-                <tr><td style='color:#888;padding:6px 0'>Department</td><td style='padding:6px 0'><?= $submitterDept ?: '—' ?></td></tr>    
-                <tr><td style='color:#888;padding:6px 0'>Status</td><td style='padding:6px 0;color:#D0021B;font-weight:600'>Menunggu Approval Manager</td></tr>
-            </table>
-            <div style='margin:20px 0'>
-                <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Approve</a>
-            </div>";
+    // Routing ke manager department submitter
+    $mgrUsers = getDeptManagers($pdo, $submitterDept);
 
-        foreach ($mgrUsers as $u) {
-            sendMail($u['email'], $u['name'], "[4M Change] Permohonan Baru Menunggu Approval — $changeNo", mailTemplate("Permohonan Baru Masuk", $bodyHtml));
-        }
+    // Fallback: kalau dept belum di-routing, kirim ke semua manager
+    if (empty($mgrUsers)) {
+        $mgrUsers = $pdo->query("SELECT name, email FROM users WHERE role='manager' AND is_active=1 AND email != ''")->fetchAll();
     }
+
+    $body = "
+        <p style='color:#444;font-size:13px;margin:0 0 16px'>Ada permohonan 4M Change baru menunggu approval Manager.</p>
+        <table style='width:100%;border-collapse:collapse;font-size:13px'>
+            <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
+            <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>$partName</td></tr>
+            <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>$category</td></tr>
+            <tr><td style='color:#888;padding:6px 0'>Diajukan oleh</td><td style='padding:6px 0'>$submitterName</td></tr>
+            <tr><td style='color:#888;padding:6px 0'>Department</td><td style='padding:6px 0'>$submitterDept</td></tr>
+        </table>
+        <div style='margin:20px 0'>
+            <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat & Approve</a>
+        </div>";
+
+    foreach ($mgrUsers as $u) {
+        sendMail($u['email'], $u['name'], "[4M Change] Permohonan Baru — $changeNo", mailTemplate("Permohonan Baru Masuk", $body));
+    }
+}
 
     header('Location: index.php?success=1');
     exit;

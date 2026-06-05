@@ -46,7 +46,7 @@ foreach ($photos as $p) {
     if ($p['photo_type'] === 'after')  $afterPhoto  = $p;
 }
 
-$canApproveNow = canApprove($role, $data['workflow_status']);
+$canApproveNow = canApprove($role, $data['workflow_status'], $pdo, currentUserId(), $id);
 $statusOrder   = ['Draft'=>0,'Submitted'=>1,'Manager Approved'=>2,'Closed'=>3,'Rejected'=>-1];
 $curOrder      = $statusOrder[$data['workflow_status']] ?? 0;
 
@@ -63,11 +63,19 @@ $actionBadge = ['CREATE'=>'secondary','UPDATE'=>'secondary','SUBMIT'=>'primary',
 
 $isRejected = $data['workflow_status'] === 'Rejected';
 
+$mgrApproval = $qcApproval = null;
+foreach ($approvalLogs as $log) {
+    if ($log['step'] === 'manager') $mgrApproval = $log;
+    if ($log['step'] === 'qc')      $qcApproval  = $log;
+}
+
 $progressSteps = [
     ['label' => 'Submitter',     'appr' => null,        'rejHere' => false],
     ['label' => 'Manager Dept.', 'appr' => $mgrApproval,'rejHere' => $isRejected && $mgrApproval && $mgrApproval['status']==='Rejected'],
-    ['label' => 'QC Final',      'appr' => $qcFinal,    'rejHere' => $isRejected && $qcFinal && $qcFinal['status']==='Rejected'],
+    ['label' => 'QC',            'appr' => $qcApproval, 'rejHere' => $isRejected && $qcApproval  && $qcApproval['status']==='Rejected'],
 ];
+
+$statusOrder = ['Draft'=>0,'Submitted'=>1,'Manager Approved'=>2,'QC Approved'=>3,'Rejected'=>-1];
 
 function stepCircle(int $cur, int $order, ?array $appr): string {
     if ($appr && $appr['status'] === 'Rejected')

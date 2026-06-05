@@ -92,10 +92,36 @@ function judgeBadgeClass(string $judge): string
     };
 }
 
-function canApprove(string $role, string $status): bool
+function canApprove(string $role, string $workflowStatus, PDO $pdo = null, int $userId = 0, int $changeId = 0): bool
 {
-    if ($role === 'manager' && $status === 'Submitted')       return true;
-    if ($role === 'qc'      && $status === 'Manager Approved') return true;
+    if ($role === 'manager' && $workflowStatus === 'Submitted') {
+        if ($pdo && $userId && $changeId) {
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM change_requests cr
+                JOIN users u ON cr.created_by = u.id
+                JOIN department_managers dm ON dm.department = u.department AND dm.manager_id = ?
+                WHERE cr.id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$userId, $changeId]);
+            return (bool)$stmt->fetch();
+        }
+        return false;
+    }
+    if ($role === 'qc' && $workflowStatus === 'Manager Approved') {
+        if ($pdo && $userId && $changeId) {
+            $stmt = $pdo->prepare("
+                SELECT 1 FROM change_requests cr
+                JOIN users u ON cr.created_by = u.id
+                JOIN department_qc dq ON dq.department = u.department AND dq.qc_id = ?
+                WHERE cr.id = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$userId, $changeId]);
+            return (bool)$stmt->fetch();
+        }
+        return false;
+    }
     return false;
 }
 
@@ -122,12 +148,52 @@ function stepLabel(string $step): string
 function getNeedCount(PDO $pdo, string $role, int $userId): int
 {
     if ($role === 'manager') {
-        return (int) $pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status = 'Submitted'")->fetchColumn();
+        $stmt = $pdo->prepare("
+            SELECT COUNT(DISTINCT cr.id)
+            FROM change_requests cr
+            JOIN users u ON cr.created_by = u.id
+            JOIN department_managers dm ON dm.department = u.department AND dm.manager_id = ?
+            WHERE cr.workflow_status = 'Submitted'
+        ");
+        $stmt->execute([$userId]);
+        return (int)$stmt->fetchColumn();
     }
     if ($role === 'qc') {
-        return (int) $pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status IN ('Manager Approved','QC Approved')")->fetchColumn();
+        $stmt = $pdo->prepare("
+            SELECT COUNT(DISTINCT cr.id)
+            FROM change_requests cr
+            JOIN users u ON cr.created_by = u.id
+            JOIN department_qc dq ON dq.department = u.department AND dq.qc_id = ?
+            WHERE cr.workflow_status = 'Manager Approved'
+        ");
+        $stmt->execute([$userId]);
+        return (int)$stmt->fetchColumn();
     }
     return 0;
+}
+
+function getDeptManagers(PDO $pdo, string $department): array
+{
+    $stmt = $pdo->prepare("
+        SELECT u.id, u.name, u.email
+        FROM users u
+        JOIN department_managers dm ON dm.manager_id = u.id
+        WHERE dm.department = ? AND u.is_active = 1
+    ");
+    $stmt->execute([$department]);
+    return $stmt->fetchAll();
+}
+
+function getDeptQc(PDO $pdo, string $department): array
+{
+    $stmt = $pdo->prepare("
+        SELECT u.id, u.name, u.email
+        FROM users u
+        JOIN department_qc dq ON dq.qc_id = u.id
+        WHERE dq.department = ? AND u.is_active = 1
+    ");
+    $stmt->execute([$department]);
+    return $stmt->fetchAll();
 }
 
 function csrfToken(): string
