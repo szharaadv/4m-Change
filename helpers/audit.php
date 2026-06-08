@@ -30,9 +30,17 @@ function writeAuditLog(
         // PC Name — reverse DNS lookup
         $pcName = null;
         if ($ip && $ip !== 'unknown' && $ip !== '::1' && $ip !== '127.0.0.1') {
-            $pcName = @gethostbyaddr($ip) ?: null;
+            $resolved = @gethostbyaddr($ip);
+            $pcName = ($resolved && $resolved !== $ip) ? $resolved : null;
         } elseif ($ip === '::1' || $ip === '127.0.0.1') {
-            $pcName = gethostname(); // localhost = server PC name
+            $pcName = gethostname();
+        }
+
+        // Fallback: coba ambil dari HTTP header (beberapa proxy kirim ini)
+        if (!$pcName) {
+            $pcName = $_SERVER['HTTP_X_FORWARDED_HOST'] 
+                ?? $_SERVER['HTTP_CLIENT_HOSTNAME'] 
+                ?? null;
         }
 
         // User Agent (browser info)
