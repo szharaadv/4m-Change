@@ -5,22 +5,26 @@
 
 define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 
-// Auto-detect base URL based on current server
 function getBaseURL() {
     $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'];
     
-    // Get script path
-    $scriptPath = $_SERVER['SCRIPT_NAME']; // e.g., /4m-change/index.php
-    $scriptDir = dirname($scriptPath);     // e.g., /4m-change
-    
-    // Detect environment
+    // Detect environment by domain
     if (strpos($host, 'localhost') !== false || strpos($host, '127.0.0.1') !== false) {
-        // LOCAL: keep /4m-change/ in path
-        return $scriptDir . '/';
+        // LOCAL XAMPP: /4m-change/
+        return '/4m-change/';
+    } else if (strpos($host, 'yadin.com') !== false) {
+        // PRODUCTION SERVER: deployed at domain root, so BASE_URL = /
+        return '/';
     } else {
-        // SERVER: assume deployed at root
-        // https://4m-change.yadin.com/ → BASE_URL = /
+        // DEFAULT: try to detect from script path
+        $scriptPath = $_SERVER['SCRIPT_NAME'];
+        $scriptDir = dirname($scriptPath);
+        
+        // If script path contains project folder, use it
+        if (strpos($scriptDir, '/4m-change') !== false) {
+            return '/4m-change/';
+        }
         return '/';
     }
 }
