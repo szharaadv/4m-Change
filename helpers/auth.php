@@ -18,7 +18,7 @@ function isLoggedIn(): bool
 function requireLogin(): void
 {
     if (!isLoggedIn()) {
-        header('Location: /../modules/auth/login.php');
+        header('Location: /4m-change/modules/auth/login.php');
         exit;
     }
 }
@@ -46,7 +46,7 @@ function requireRole(array $roles): void
         die('<div style="font-family:sans-serif;padding:40px;text-align:center">
             <h2>403 — Akses Ditolak</h2>
             <p>Anda tidak memiliki hak akses ke halaman ini.</p>
-            <a href="/../modules/dashboard/index.php">Kembali ke Dashboard</a>
+            <a href="/4m-change/modules/dashboard/index.php">Kembali ke Dashboard</a>
         </div>');
     }
 }

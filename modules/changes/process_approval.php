@@ -60,7 +60,7 @@ try {
     $pdo->beginTransaction();
 
     $changeNo  = $cr['change_no'];
-    $detailUrl = APP_URL . "/modules/changes/detail.php?id=$id";
+    $detailUrl = APP_URL . "/4m-change/modules/changes/detail.php?id=$id";
 
     if ($action === 'approve') {
 

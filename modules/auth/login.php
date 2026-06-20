@@ -4,7 +4,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 
 if (isLoggedIn()) {
-    header('Location: /../modules/dashboard/index.php');
+    header('Location: /4m-change/modules/dashboard/index.php');
     exit;
 }
 ?>
