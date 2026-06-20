@@ -1,20 +1,27 @@
 <?php
 define('PROJECT_ROOT', realpath(__DIR__ . '/..'));
 
+// ============================================================
+// DETECT ENVIRONMENT & SET BASE_URL ACCORDINGLY
+// ============================================================
+
 function getBaseURL() {
-    // Detect by domain
-    if (strpos($_SERVER['HTTP_HOST'], 'yadin.com') !== false) {
-        // PRODUCTION: /4m-change/ (karena domain pointing ke parent htdocs)
-        return '/4m-change/';
-    } else {
-        // LOCAL: /4m-change/
-        return '/4m-change/';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    
+    // If accessing from server domain
+    if (stripos($host, 'yadin.com') !== false) {
+        // SERVER: Base URL = root (/)
+        return '/';
     }
+    
+    // Otherwise LOCAL: Base URL = /4m-change/
+    return '/4m-change/';
 }
 
 define('BASE_URL', getBaseURL());
 define('ASSETS_URL', BASE_URL . 'assets/');
 
+// Paths
 define('CONFIG_DIR', PROJECT_ROOT . '/config');
 define('HELPERS_DIR', PROJECT_ROOT . '/helpers');
 define('MODULES_DIR', PROJECT_ROOT . '/modules');
