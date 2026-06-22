@@ -116,7 +116,7 @@ $actDot = ['CREATE'=>'dot-gray','UPDATE'=>'dot-gray','SUBMIT'=>'dot-amber','RESU
 <div class="alert alert-warning">
     <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M8 15A7 7 0 118 1a7 7 0 010 14zm0 1A8 8 0 108 0a8 8 0 000 16z"/><path d="M7.002 11a1 1 0 112 0 1 1 0 01-2 0zM7.1 4.995a.905.905 0 111.8 0l-.35 3.507a.552.552 0 01-1.1 0L7.1 4.995z"/></svg>
     Ada <strong style="margin:0 3px"><?= $needCount ?></strong> permohonan yang menunggu approval Anda.
-    <a href="/4m-change/modules/changes/index.php?tab=need_approval" class="btn btn-sm" style="margin-left:auto;background:#D0021B;color:#fff;border-color:#D0021B">Lihat sekarang</a>
+    <a href="<?= navLink('modules/changes/index.php') ?>?tab=need_approval" class="btn btn-sm" style="margin-left:auto;background:#D0021B;color:#fff;border-color:#D0021B">Lihat sekarang</a>
 </div>
 <?php endif; ?>
 
@@ -125,7 +125,7 @@ $actDot = ['CREATE'=>'dot-gray','UPDATE'=>'dot-gray','SUBMIT'=>'dot-amber','RESU
     <div class="table-wrap">
         <div class="card-header">
             Change terbaru
-            <a href="/4m-change/modules/changes/index.php" class="btn btn-sm">Lihat semua</a>
+            <a href="<?= navLink('modules/changes/index.php') ?>" class="btn btn-sm">Lihat semua</a>
         </div>
         <table class="table">
             <thead>
@@ -144,7 +144,7 @@ $actDot = ['CREATE'=>'dot-gray','UPDATE'=>'dot-gray','SUBMIT'=>'dot-amber','RESU
                 <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Belum ada data.</td></tr>
                 <?php endif; ?>
                 <?php foreach ($recent as $row): ?>
-                <tr class="clickable" onclick="location.href='/4m-change/modules/changes/detail.php?id=<?= $row['id'] ?>'">
+                <tr class="clickable" onclick="location.href='<?= navLink('modules/changes/detail.php') ?>?id=<?= $row['id'] ?>'">
                     <td class="mono"><?= e($row['change_no']) ?></td>
                     <td><?= e($row['category_4m']) ?></td>
                     <td><?= e($row['part_name']) ?></td>

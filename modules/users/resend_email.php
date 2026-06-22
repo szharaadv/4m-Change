@@ -34,7 +34,7 @@ $pdo->prepare("UPDATE users SET password_token = ?, token_expires_at = ? WHERE i
     ->execute([$token, $expiresAt, $id]);
 
 // Send setup email
-$setupUrl = APP_URL . "/4m-change/modules/auth/set_password.php?token=$token";    
+$setupUrl = APP_URL . "/modules/auth/set_password.php?token=$token";    
 
 $bodyHtml = "
     <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>{$u['name']}</strong>,</p>

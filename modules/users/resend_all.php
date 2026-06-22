@@ -25,7 +25,7 @@ foreach ($pendingUsers as $u) {
     $pdo->prepare("UPDATE users SET password_token = ?, token_expires_at = ? WHERE id = ?")
         ->execute([$token, $expiresAt, $u['id']]);
 
-    $setupUrl = "http://" . $_SERVER['HTTP_HOST'] . "/4m-change/modules/auth/set_password.php?token=$token";
+    $setupUrl = APP_URL . "/modules/auth/set_password.php?token=$token";
 
     $bodyHtml = "
         <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>{$u['name']}</strong>,</p>

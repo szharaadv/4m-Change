@@ -1,9 +1,10 @@
 <?php
 session_start();
+require_once __DIR__ . '/config/paths.php';
 
 if (isset($_SESSION['user'])) {
-    header('Location: /4m-change/modules/dashboard/index.php');
+    header('Location: ' . navLink('modules/dashboard/index.php'));
 } else {
-    header('Location: /4m-change/modules/auth/login.php');
+    header('Location: ' . navLink('modules/auth/login.php'));
 }
 exit;

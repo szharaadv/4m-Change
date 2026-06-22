@@ -46,7 +46,7 @@ try {
     $changeId = $pdo->lastInsertId();
     $partName = trim($_POST['part_name'] ?? '');
     $category = $_POST['category_4m'] ?? '';
-    $detailUrl = APP_URL . "/4m-change/modules/changes/detail.php?id=$changeId";
+    $detailUrl = APP_URL . "/modules/changes/detail.php?id=$changeId";
     
     // Upload before photo
     if (!empty($_FILES['before_photo']['name'])) {
@@ -110,7 +110,7 @@ try {
 
     // Notifikasi email
     if ($wfStatus === 'Submitted') {
-    $detailUrl     = APP_URL . "/4m-change/modules/changes/detail.php?id=$changeId";
+    $detailUrl     = APP_URL . "/modules/changes/detail.php?id=$changeId";
     $submitter     = getSubmitterEmail($pdo, currentUserId());
     $submitterName = $submitter['name'] ?? 'Submitter';
 

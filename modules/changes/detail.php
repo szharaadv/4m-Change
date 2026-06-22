@@ -297,7 +297,7 @@ document.addEventListener('keydown', function(e) {
     <div class="card-header bg-white fw-semibold">Attachment Lainnya</div>
     <div class="card-body d-flex flex-wrap gap-2">
         <?php foreach ($attachments as $att): ?>
-        <a href="/4m-change/<?= e($att['file_path']) ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
+        <a href="<?= e(navLink($att['file_path'])) ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
             📎 <?= e($att['file_name']) ?>
         </a>
         <?php endforeach; ?>

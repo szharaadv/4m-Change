@@ -49,5 +49,5 @@ $_SESSION['user'] = [
 // Audit log after session set
 writeAuditLog($pdo, 'PASSWORD_SET', "User {$user['username']} set password pertama kali & akun aktif", $user['id'], $user['username'], $user['role']);
 
-header('Location: /4m-change/modules/dashboard/index.php');
+header('Location: ' . navLink('modules/dashboard/index.php'));
 exit;

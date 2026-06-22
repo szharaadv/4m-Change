@@ -7,5 +7,5 @@ require_once '../../helpers/audit.php';
 writeAuditLog($pdo, 'LOGOUT', 'User logout');
 
 session_destroy();
-header('Location: /4m-change/modules/auth/login.php');
+header('Location: ' . navLink('modules/auth/login.php'));
 exit;

@@ -25,7 +25,7 @@ if ($valid && $user['is_active'] == 1) {
 
     writeAuditLog($pdo, 'LOGIN', 'Login berhasil', $user['id'], $user['username'], $user['role']);
 
-    header('Location: /../4m-change/modules/dashboard/index.php');
+    header('Location: ' . navLink('modules/dashboard/index.php'));
     exit;
 }
 

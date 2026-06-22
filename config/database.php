@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/paths.php';
+
 $host    = '127.0.0.1';
 $db      = 'db_4m_change';
 $user    = 'root';
