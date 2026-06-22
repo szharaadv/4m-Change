@@ -38,13 +38,20 @@ foreach ($iterator as $file) {
     
     // FIX 3: onclick="location.href='/4m-change/modules/... → onclick="location.href='<?= navLink('modules/...
     $content = preg_replace_callback(
-        '/onclick=["\']location\.href=[\'"\/4m-change\/(modules\/[^"\']+)["\']/',
+        '/onclick=["\']location\.href=[\'"]\/4m-change\/(modules\/[^"\']+)["\']/',
         function($m) { return 'onclick="location.href=\'<?= navLink(\'' . $m[1] . '\') ?>'; },
         $content
     );
     
     // FIX 4: For APP_URL based URLs (email), they're OK - skip those
     
+    // Guard: preg_replace_callback returns null on regex failure — never write that out,
+    // or the file would be emptied.
+    if ($content === null) {
+        echo "⚠️  SKIPPED (regex error): " . str_replace($projectRoot . '/', '', $path) . "\n";
+        continue;
+    }
+
     if ($content !== $original) {
         file_put_contents($path, $content);
         $rel = str_replace($projectRoot . '/', '', $path);
