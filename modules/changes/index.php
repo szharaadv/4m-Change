@@ -52,8 +52,10 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
 ?>
 
 <?php if (isset($_GET['success'])): ?>
-<div class="alert alert-success alert-dismissible">Data berhasil disimpan.</div>
+<div class="alert alert-success alert-dismissible">Data saved successfully.</div>
 <?php endif; ?>
+
+<div class="page-flex">
 
 <div class="page-header">
     <div>
@@ -68,28 +70,31 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
     </div>
 </div>
 
+<?php $isApprover = in_array($role, ['manager','qc'], true); ?>
 <div class="stat-grid">
     <div class="stat-card"><div class="stat-label">Total Change</div><div class="stat-val"><?= $totalChange ?></div></div>
-    <div class="stat-card"><div class="stat-label">Menunggu Approval Saya</div><div class="stat-val <?= $needCount > 0 ? 'text-warning' : '' ?>"><?= $needCount ?></div></div>
-    <div class="stat-card"><div class="stat-label">Closed Bulan Ini</div><div class="stat-val text-success"><?= $closedMonth ?></div></div>
+    <?php if ($isApprover): ?>
+    <div class="stat-card"><div class="stat-label">Pending My Approval</div><div class="stat-val <?= $needCount > 0 ? 'text-warning' : '' ?>"><?= $needCount ?></div></div>
+    <?php endif; ?>
+    <div class="stat-card"><div class="stat-label">Closed This Month</div><div class="stat-val text-success"><?= $closedMonth ?></div></div>
     <div class="stat-card"><div class="stat-label">Need Customer</div><div class="stat-val"><?= $needCustomer ?></div></div>
 </div>
 
-<?php if ($needCount > 0): ?>
+<?php if ($isApprover && $needCount > 0): ?>
 <div class="alert alert-warning">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0"><path d="M8 15A7 7 0 118 1a7 7 0 010 14zm0 1A8 8 0 108 0a8 8 0 000 16z"/><path d="M7.002 11a1 1 0 112 0 1 1 0 01-2 0zM7.1 4.995a.905.905 0 111.8 0l-.35 3.507a.552.552 0 01-1.1 0L7.1 4.995z"/></svg>
-    Ada <strong><?= $needCount ?></strong> permohonan yang menunggu approval Anda.
+    There <?= $needCount == 1 ? 'is' : 'are' ?> <strong><?= $needCount ?></strong> request<?= $needCount == 1 ? '' : 's' ?> waiting for your approval.
 </div>
 <?php endif; ?>
 
 <div class="tab-bar">
-    <a class="tab-item <?= $tab === 'all' ? 'active' : '' ?>" href="?tab=all">Semua</a>
-    <?php if (in_array($role, ['manager','admin','qc'], true)): ?>
+    <a class="tab-item <?= $tab === 'all' ? 'active' : '' ?>" href="?tab=all">All</a>
+    <?php if ($isApprover): ?>
     <a class="tab-item <?= $tab === 'need_approval' ? 'active' : '' ?>" href="?tab=need_approval">
-        Perlu Approval Saya
+        Needs My Approval
         <?php if ($needCount > 0): ?><span class="nav-badge"><?= $needCount ?></span><?php endif; ?>
     </a>
-    <a class="tab-item <?= $tab === 'my_done' ? 'active' : '' ?>" href="?tab=my_done">Sudah Saya Proses</a>
+    <a class="tab-item <?= $tab === 'my_done' ? 'active' : '' ?>" href="?tab=my_done">Processed by Me</a>
     <?php endif; ?>
 </div>
 
@@ -98,9 +103,9 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
     <form method="GET" class="d-flex gap-12 al-center" style="flex-wrap:wrap">
         <input type="hidden" name="tab" value="<?= e($tab) ?>">
         <div>
-            <label class="form-label">Kategori</label>
+            <label class="form-label">Category</label>
             <select name="category_4m" class="form-control" style="min-width:120px">
-                <option value="">Semua</option>
+                <option value="">All</option>
                 <?php foreach (['Man','Material','Method','Machine'] as $cat): ?>
                 <option <?= (($_GET['category_4m'] ?? '') === $cat) ? 'selected' : '' ?>><?= $cat ?></option>
                 <?php endforeach; ?>
@@ -108,12 +113,12 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
         </div>
         <div>
             <label class="form-label">Part Name</label>
-            <input type="text" name="part_name" class="form-control" value="<?= e($_GET['part_name'] ?? '') ?>" placeholder="Cari...">
+            <input type="text" name="part_name" class="form-control" value="<?= e($_GET['part_name'] ?? '') ?>" placeholder="Search...">
         </div>
         <div>
             <label class="form-label">Status</label>
             <select name="workflow_status" class="form-control" style="min-width:140px">
-                <option value="">Semua</option>
+                <option value="">All</option>
                 <?php foreach (['Draft','Submitted','Manager Approved','QC Approved','Closed','Rejected'] as $st): ?>
                 <option <?= (($_GET['workflow_status'] ?? '') === $st) ? 'selected' : '' ?>><?= $st ?></option>
                 <?php endforeach; ?>
@@ -127,24 +132,26 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
 </div>
 
 <div class="table-wrap">
+    <div class="table-scroll">
     <table class="table">
         <thead>
             <tr>
                 <th style="width:36px">No</th>
                 <th style="width:120px">Change No</th>
-                <th style="width:80px">Kategori</th>
+                <th style="width:80px">Category</th>
                 <th style="width:100px">PIC</th>
                 <th>Part Name</th>
+                <th>Description</th>
                 <th style="width:70px">Judge</th>
                 <th style="width:85px">Customer</th>
                 <th style="width:130px">Status</th>
-                <th style="width:90px">Tanggal</th>
-                <th style="width:80px">Aksi</th>
+                <th style="width:90px">Date</th>
+                <th style="width:80px">Action</th>
             </tr>
         </thead>
         <tbody>
             <?php if (!$rows): ?>
-            <tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">Tidak ada data.</td></tr>
+            <tr><td colspan="11" style="text-align:center;color:var(--muted);padding:24px">No data available.</td></tr>
             <?php endif; ?>
             <?php foreach ($rows as $i => $row): ?>
             <?php $needsMyApproval = canApprove($role, $row['workflow_status']); ?>
@@ -154,12 +161,13 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
                 <td><?= e($row['category_4m']) ?></td>
                 <td><?= e($row['pic_name']) ?></td>
                 <td class="fw-600"><?= e($row['part_name']) ?></td>
+                <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= e($row['change_item']) ?>"><?= e($row['change_item'] ?: '—') ?></td>
                 <td><span class="badge badge-<?= strtolower($row['judge_status']) ?>"><?= e($row['judge_status']) ?></span></td>
                 <td style="font-size:12px"><?= e($row['confirm_customer']) ?></td>
                 <td><span class="badge badge-<?= $statusMap[$row['workflow_status']] ?? 'draft' ?>"><?= e($row['workflow_status']) ?></span></td>
                 <td class="text-muted" style="font-size:12px"><?= date('d M Y', strtotime($row['created_at'])) ?></td>
                 <td onclick="event.stopPropagation()">
-                    <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-sm">Detail</a>
+                    <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-sm">Details</a>
                     <?php if (in_array($role, ['admin','qc_prod'], true) && $row['workflow_status'] === 'Rejected'): ?>
                     <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm" style="margin-top:4px;display:block">Edit</a>
                     <?php endif; ?>
@@ -168,6 +176,9 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
             <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 </div>
+
+</div><!-- .page-flex -->
 
 <?php include '../../templates/footer.php'; ?>

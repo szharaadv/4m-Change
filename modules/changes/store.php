@@ -5,22 +5,25 @@ require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
 requireRole(['admin', 'manager', 'qc']);
+verifyCsrf();
 
 try {
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("INSERT INTO change_requests (
         change_no, category_4m, pic_id, part_no, implement_location, part_name, model,
-        start_lot_serial, change_item, action_plan, before_desc, after_desc,
-        judge_status, confirm_customer, evidence_note, workflow_status, created_by, updated_by
+        start_lot_serial, change_date, change_item, action_plan, before_desc, after_desc,
+        judge_status, confirm_customer, evidence_note, workflow_status, created_by, updated_by, created_at, updated_at
     ) VALUES (
         :change_no, :category_4m, :pic_id, :part_no, :implement_location, :part_name, :model,
-        :start_lot_serial, :change_item, :action_plan, :before_desc, :after_desc,
-        :judge_status, :confirm_customer, :evidence_note, :workflow_status, :created_by, :updated_by
+        :start_lot_serial, :change_date, :change_item, :action_plan, :before_desc, :after_desc,
+        :judge_status, :confirm_customer, :evidence_note, :workflow_status, :created_by, :updated_by, :created_at, :updated_at
     )");
 
-    $wfStatus = $_POST['workflow_status'] ?? 'Draft';
+    $isHistorical = isset($_POST['is_historical']) && $_POST['is_historical'] == '1';
+    $wfStatus = $isHistorical ? 'Closed' : ($_POST['workflow_status'] ?? 'Draft');
     $changeNo = generateChangeNo($pdo);
+    $changeDate = $_POST['change_date'] ?? date('Y-m-d');
 
     $stmt->execute([
         ':change_no' => $changeNo,
@@ -31,6 +34,7 @@ try {
         ':part_name' => trim($_POST['part_name'] ?? ''),
         ':model' => trim($_POST['model'] ?? ''),
         ':start_lot_serial' => trim($_POST['start_lot_serial'] ?? '') ?: null,
+        ':change_date' => $_POST['change_date'] ?? date('Y-m-d'),  // ← TAMBAH BARIS INI
         ':change_item' => trim($_POST['change_item'] ?? ''),
         ':action_plan' => trim($_POST['action_plan'] ?? ''),
         ':before_desc' => trim($_POST['before_desc'] ?? '') ?: null,
@@ -41,6 +45,8 @@ try {
         ':workflow_status' => $wfStatus,
         ':created_by' => currentUserId(),
         ':updated_by' => currentUserId(),
+        ':created_at' => date('Y-m-d H:i:s'),
+        ':updated_at' => date('Y-m-d H:i:s'),
     ]);
 
     $changeId = $pdo->lastInsertId();
@@ -55,7 +61,7 @@ try {
             $pdo->prepare("INSERT INTO change_photos (change_request_id, photo_type, file_name, file_path) VALUES (?, 'before', ?, ?)")
                 ->execute([$changeId, $r['file_name'], $r['file_path']]);
         } else {
-            throw new Exception('Before photo gagal: ' . $r['message']);
+            throw new Exception('Before photo failed: ' . $r['message']);
         }
     }
 
@@ -66,7 +72,7 @@ try {
             $pdo->prepare("INSERT INTO change_photos (change_request_id, photo_type, file_name, file_path) VALUES (?, 'after', ?, ?)")
                 ->execute([$changeId, $r['file_name'], $r['file_path']]);
         } else {
-            throw new Exception('After photo gagal: ' . $r['message']);
+            throw new Exception('After photo failed: ' . $r['message']);
         }
     }
 
@@ -92,10 +98,10 @@ try {
 
     // History
     $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'CREATE', ?, ?)")
-        ->execute([$changeId, 'Change request dibuat — status: ' . $wfStatus, currentUserId()]);
+        ->execute([$changeId, 'Change request created — status: ' . $wfStatus, currentUserId()]);
 
     if ($wfStatus === 'Submitted') {
-        $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'SUBMIT', 'Submitted untuk approval', ?)")
+        $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'SUBMIT', 'Submitted for approval', ?)")
             ->execute([$changeId, currentUserId()]);
     }
 
@@ -105,43 +111,43 @@ try {
     if ($wfStatus === 'Submitted') {
         writeAuditLog($pdo, 'CHANGE_SUBMITTED', "Submit change request $changeNo — $partName ($category)");
     } else {
-        writeAuditLog($pdo, 'CHANGE_CREATED', "Buat draft change request $changeNo — $partName ($category)");
+        writeAuditLog($pdo, 'CHANGE_CREATED', "Created draft change request $changeNo — $partName ($category)");
     }
 
-    // Notifikasi email
+    // Email notification
     if ($wfStatus === 'Submitted') {
     $detailUrl     = APP_URL . "/modules/changes/detail.php?id=$changeId";
     $submitter     = getSubmitterEmail($pdo, currentUserId());
     $submitterName = $submitter['name'] ?? 'Submitter';
 
-    // Ambil department submitter
+    // Get submitter department
     $deptStmt = $pdo->prepare("SELECT department FROM users WHERE id = ?");
     $deptStmt->execute([currentUserId()]);
     $submitterDept = $deptStmt->fetchColumn() ?? '';
 
-    // Routing ke manager department submitter
+    // Route to the manager of the submitter's department
     $mgrUsers = getDeptManagers($pdo, $submitterDept);
 
-    // Fallback: kalau dept belum di-routing, kirim ke semua manager
+    // Fallback: if the department isn't routed yet, send to all managers
     if (empty($mgrUsers)) {
         $mgrUsers = $pdo->query("SELECT name, email FROM users WHERE role='manager' AND is_active=1 AND email != ''")->fetchAll();
     }
 
-    $body = "
-        <p style='color:#444;font-size:13px;margin:0 0 16px'>Ada permohonan 4M Change baru menunggu approval Manager.</p>
-        <table style='width:100%;border-collapse:collapse;font-size:13px'>
-            <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
-            <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>$partName</td></tr>
-            <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>$category</td></tr>
-            <tr><td style='color:#888;padding:6px 0'>Diajukan oleh</td><td style='padding:6px 0'>$submitterName</td></tr>
-            <tr><td style='color:#888;padding:6px 0'>Department</td><td style='padding:6px 0'>$submitterDept</td></tr>
-        </table>
-        <div style='margin:20px 0'>
-            <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat & Approve</a>
-        </div>";
+    $infoTable = mailInfoTable([
+        'Change No'    => "<span style='font-family:monospace'>$changeNo</span>",
+        'Part Name'    => $partName,
+        'Category'     => $category,
+        'Submitted by' => $submitterName,
+        'Department'   => $submitterDept,
+    ]);
+    $subject = changeSubject('New Request', $category, $partName, $changeNo);
 
     foreach ($mgrUsers as $u) {
-        sendMail($u['email'], $u['name'], "[4M Change] Permohonan Baru — $changeNo", mailTemplate("Permohonan Baru Masuk", $body));
+        $body = mailGreeting($u['name']) . "
+            <p style='margin:0 0 14px'>A new 4M Change request is waiting for your approval.</p>
+            $infoTable
+            " . mailButton($detailUrl, 'View & Approve') . "";
+        sendMail($u['email'], $u['name'], $subject, mailTemplate('New Request Submitted', $body));
     }
 }
 

@@ -8,7 +8,7 @@ $password = $_POST['password'] ?? '';
 $passwordConfirm = $_POST['password_confirm'] ?? '';
 
 if (!$token) {
-    header('Location: set_password.php?token=&error=' . urlencode('Token tidak valid.'));
+    header('Location: set_password.php?token=&error=' . urlencode('Invalid token.'));
     exit;
 }
 
@@ -18,18 +18,18 @@ $user = $stmt->fetch();
 
 if (!$user) {
     die('<div style="font-family:sans-serif;padding:40px;text-align:center">
-        <h2>Link tidak valid atau sudah kadaluarsa.</h2>
-        <p>Silakan hubungi administrator untuk mendapatkan link baru.</p>
+        <h2>Invalid or expired link.</h2>
+        <p>Please contact the administrator to get a new link.</p>
     </div>');
 }
 
 if (strlen($password) < 6) {
-    header('Location: set_password.php?token=' . urlencode($token) . '&error=' . urlencode('Password minimal 6 karakter.'));
+    header('Location: set_password.php?token=' . urlencode($token) . '&error=' . urlencode('Password must be at least 6 characters.'));
     exit;
 }
 
 if ($password !== $passwordConfirm) {
-    header('Location: set_password.php?token=' . urlencode($token) . '&error=' . urlencode('Password dan konfirmasi tidak cocok.'));
+    header('Location: set_password.php?token=' . urlencode($token) . '&error=' . urlencode('Password and confirmation do not match.'));
     exit;
 }
 
@@ -47,7 +47,7 @@ $_SESSION['user'] = [
 ];
 
 // Audit log after session set
-writeAuditLog($pdo, 'PASSWORD_SET', "User {$user['username']} set password pertama kali & akun aktif", $user['id'], $user['username'], $user['role']);
+writeAuditLog($pdo, 'PASSWORD_SET', "User {$user['username']} set password for the first time & account activated", $user['id'], $user['username'], $user['role']);
 
 header('Location: ' . navLink('modules/dashboard/index.php'));
 exit;

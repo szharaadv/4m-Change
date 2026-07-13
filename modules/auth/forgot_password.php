@@ -17,7 +17,7 @@ require_once '../../config/database.php';
             <div class="login-brand">
                 <div class="login-mark">4M</div>
                 <div class="login-title">Forgot Password</div>
-                <div class="login-sub">Masukkan email kamu untuk mendapatkan link reset password.</div>
+                <div class="login-sub">Enter your email to receive a password reset link.</div>
             </div>
 
             <?php if (isset($_GET['error'])): ?>
@@ -28,7 +28,7 @@ require_once '../../config/database.php';
 
             <?php if (isset($_GET['success'])): ?>
                 <div class="alert alert-success" style="margin-bottom:16px">
-                    Link reset password telah dikirim ke email kamu. Cek inbox!
+                    A password reset link has been sent to your email. Check your inbox!
                 </div>
             <?php endif; ?>
 
@@ -38,9 +38,9 @@ require_once '../../config/database.php';
                     <input type="email" name="email" class="form-control" required placeholder="email@yanmar.co.id"
                         autofocus>
                 </div>
-                <button type="submit" class="btn btn-primary w-100" style="margin-bottom:12px">Kirim Link Reset</button>
-                <a href="login.php" style="display:block;text-align:center;font-size:12px;color:var(--muted)">← Kembali
-                    ke Login</a>
+                <button type="submit" class="btn btn-primary w-100" style="margin-bottom:12px">Send Reset Link</button>
+                <a href="login.php" style="display:block;text-align:center;font-size:12px;color:var(--muted)">← Back
+                    to Login</a>
             </form>
         </div>
     </div>

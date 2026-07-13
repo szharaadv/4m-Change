@@ -10,9 +10,9 @@ include '../../templates/navbar.php';
 <div class="page-header">
     <div>
         <div class="page-title">Add New User</div>
-        <div class="page-sub">Tambah akun pengguna baru — password akan diatur oleh user</div>
+        <div class="page-sub">Add a new user account — the password will be set by the user</div>
     </div>
-    <a href="index.php" class="btn">Batal</a>
+    <a href="index.php" class="btn">Cancel</a>
 </div>
 
 <?php if (isset($_GET['error'])): ?>
@@ -25,21 +25,21 @@ include '../../templates/navbar.php';
         <div class="d-grid grid-2 gap-16">
             <div>
                 <label class="form-label">Full Name <span class="required">*</span></label>
-                <input type="text" name="name" class="form-control" required placeholder="Nama lengkap...">
+                <input type="text" name="name" class="form-control" required placeholder="Full name...">
             </div>
             <div>
                 <label class="form-label">Username <span class="required">*</span></label>
-                <input type="text" name="username" class="form-control" required placeholder="Username unik...">
+                <input type="text" name="username" class="form-control" required placeholder="Unique username...">
             </div>
             <div>
                 <label class="form-label">Email <span class="required">*</span></label>
                 <input type="email" name="email" class="form-control" required placeholder="email@yanmar.co.id">
-                <div class="form-hint">Link setup password akan dikirim ke email ini.</div>
+                <div class="form-hint">The password setup link will be sent to this email.</div>
             </div>
             <div>
                 <label class="form-label">Role <span class="required">*</span></label>
                 <select name="role" class="form-control" required>
-                    <option value="">Pilih role...</option>
+                    <option value="">Select role...</option>
                     <option value="qc_prod">qc_prod</option>
                     <option value="admin">admin</option>
                     <option value="manager">manager</option>
@@ -50,8 +50,8 @@ include '../../templates/navbar.php';
     </div>
 
     <div class="d-flex gap-8" style="justify-content:flex-end;padding-bottom:8px">
-        <a href="index.php" class="btn">Batal</a>
-        <button type="submit" class="btn btn-primary">Tambah & Kirim Email Setup</button>
+        <a href="index.php" class="btn">Cancel</a>
+        <button type="submit" class="btn btn-primary">Add & Send Setup Email</button>
     </div>
 </form>
 

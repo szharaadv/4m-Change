@@ -68,12 +68,12 @@ try {
             $newStatus  = 'Manager Approved';
             $step       = 'manager';
             $actionType = 'APPROVAL';
-            $actionNote = 'Disetujui oleh Manager Department';
+            $actionNote = 'Approved by Manager Department';
         } else {
             $newStatus  = 'QC Approved';
             $step       = 'qc';
             $actionType = 'APPROVAL';
-            $actionNote = 'Disetujui oleh QC';
+            $actionNote = 'Approved by QC';
         }
 
         $pdo->prepare("UPDATE change_requests SET
@@ -96,59 +96,75 @@ try {
             ->execute([$id, $step, $userId, $note ?: null]);
 
         $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, ?, ?, ?)")
-            ->execute([$id, $actionType, $actionNote . ($note ? ' | Catatan: ' . $note : ''), $userId]);
+            ->execute([$id, $actionType, $actionNote . ($note ? ' | Note: ' . $note : ''), $userId]);
 
         $pdo->commit();
 
         writeAuditLog($pdo, 'CHANGE_APPROVED', "Approve $changeNo → $newStatus (step: $step)");
 
-        $noteRow = $note ? "<tr><td style='color:#888;padding:6px 0;font-size:12px'>Catatan</td><td style='padding:6px 0;font-size:12px'>" . htmlspecialchars($note) . "</td></tr>" : '';
+        $partName = $cr['part_name'];
+        $category = $cr['category_4m'];
 
         if ($isManagerStep) {
-            // Ambil dept submitter → routing ke QC yang handle dept itu
+            // Get submitter department → route to the QC handling that department
             $deptStmt = $pdo->prepare("SELECT department FROM users WHERE id = ?");
             $deptStmt->execute([$cr['created_by']]);
             $dept = $deptStmt->fetchColumn() ?? '';
 
             $qcUsers = getDeptQc($pdo, $dept);
             if (empty($qcUsers)) {
-                // Fallback: kirim ke semua QC
+                // Fallback: send to all QC
                 $qcUsers = $pdo->query("SELECT name, email FROM users WHERE role='qc' AND is_active=1 AND email != ''")->fetchAll();
             }
 
-            $bodyHtml = "
-                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change berikut telah disetujui oleh <strong>Manager Department</strong> dan menunggu approval QC.</p>
-                <table style='width:100%;border-collapse:collapse;font-size:13px'>
-                    <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
-                    <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
-                    <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>{$cr['category_4m']}</td></tr>
-                    $noteRow
-                </table>
-                <div style='margin:20px 0'>
-                    <a href='$detailUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Approve</a>
-                </div>";
+            $infoTable = mailInfoTable([
+                'Change No' => "<span style='font-family:monospace'>$changeNo</span>",
+                'Part Name' => $partName,
+                'Category'  => $category,
+                'Note'      => $note ? htmlspecialchars($note) : null,
+            ]);
 
             foreach ($qcUsers as $u) {
-                sendMail($u['email'], $u['name'], "[4M Change] Menunggu Approval QC — $changeNo", mailTemplate("Permohonan Siap Review QC", $bodyHtml));
+                $bodyHtml = mailGreeting($u['name']) . "
+                    <p style='margin:0 0 14px'>The following 4M Change request has been approved by <strong>Manager Department</strong> and is now awaiting your approval.</p>
+                    $infoTable
+                    " . mailButton($detailUrl, 'View Detail & Approve') . "";
+                sendMail($u['email'], $u['name'], changeSubject('Pending QC Approval', $category, $partName, $changeNo), mailTemplate('Ready for QC Review', $bodyHtml));
+            }
+
+            // Notify submitter — Manager Approved, moving to QC
+            $submitter = getSubmitterEmail($pdo, $cr['created_by']);
+            if ($submitter) {
+                $infoTableSubmitter = mailInfoTable([
+                    'Change No' => "<span style='font-family:monospace'>$changeNo</span>",
+                    'Part Name' => $partName,
+                    'Category'  => $category,
+                    'Status'    => "<span style='color:#2563eb'>Manager Approved</span>",
+                    'Note'      => $note ? htmlspecialchars($note) : null,
+                ]);
+                $bodySubmitter = mailGreeting($submitter['name']) . "
+                    <p style='margin:0 0 14px'>Your 4M Change request has been <strong style='color:#2563eb'>approved by Manager Department</strong> and is now moving to the QC approval stage.</p>
+                    $infoTableSubmitter
+                    " . mailButton($detailUrl, 'View Detail', '#2563eb') . "";
+                sendMail($submitter['email'], $submitter['name'], changeSubject('Manager Approved', $category, $partName, $changeNo), mailTemplate('Manager Approved', $bodySubmitter, '#2563eb'));
             }
 
         } else {
-            // QC Approved → kirim notif ke submitter
+            // QC Approved → notify submitter
             $submitter = getSubmitterEmail($pdo, $cr['created_by']);
             if ($submitter) {
-                $bodyHtml = "
-                    <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change telah <strong style='color:#16a34a'>disetujui QC (QC Approved)</strong>.</p>
-                    <table style='width:100%;border-collapse:collapse;font-size:13px'>
-                        <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
-                        <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
-                        <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>{$cr['category_4m']}</td></tr>
-                        <tr><td style='color:#888;padding:6px 0'>Status</td><td style='padding:6px 0;color:#16a34a;font-weight:600'>QC Approved ✓</td></tr>
-                        $noteRow
-                    </table>
-                    <div style='margin:20px 0'>
-                        <a href='$detailUrl' style='background:#16a34a;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail</a>
-                    </div>";
-                sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan QC Approved — $changeNo", mailTemplate("QC Approved", $bodyHtml, '#16a34a'));
+                $infoTable = mailInfoTable([
+                    'Change No' => "<span style='font-family:monospace'>$changeNo</span>",
+                    'Part Name' => $partName,
+                    'Category'  => $category,
+                    'Status'    => "<span style='color:#16a34a'>QC Approved ✓</span>",
+                    'Note'      => $note ? htmlspecialchars($note) : null,
+                ]);
+                $bodyHtml = mailGreeting($submitter['name']) . "
+                    <p style='margin:0 0 14px'>Your 4M Change request has been <strong style='color:#16a34a'>approved by QC (QC Approved)</strong>.</p>
+                    $infoTable
+                    " . mailButton($detailUrl, 'View Detail', '#16a34a') . "";
+                sendMail($submitter['email'], $submitter['name'], changeSubject('QC Approved', $category, $partName, $changeNo), mailTemplate('QC Approved', $bodyHtml, '#16a34a'));
             }
         }
 
@@ -180,28 +196,26 @@ try {
             ->execute([$id, $step, $userId, $note ?: null]);
 
         $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'REJECTION', ?, ?)")
-            ->execute([$id, 'Ditolak oleh ' . stepLabel($step) . ($note ? ' | Alasan: ' . $note : ''), $userId]);
+            ->execute([$id, 'Rejected by ' . stepLabel($step) . ($note ? ' | Reason: ' . $note : ''), $userId]);
 
         $pdo->commit();
 
-        writeAuditLog($pdo, 'CHANGE_REJECTED', "Reject $changeNo (step: $step)" . ($note ? " — Alasan: $note" : ''));
+        writeAuditLog($pdo, 'CHANGE_REJECTED', "Reject $changeNo (step: $step)" . ($note ? " — Reason: $note" : ''));
 
         $submitter = getSubmitterEmail($pdo, $cr['created_by']);
         if ($submitter) {
-            $alasan   = $note ? "<tr><td style='color:#888;padding:6px 0;width:140px'>Alasan</td><td style='padding:6px 0;color:#991b1b'>" . htmlspecialchars($note) . "</td></tr>" : '';
-            $bodyHtml = "
-                <p style='color:#444;font-size:13px;margin:0 0 16px'>Permohonan 4M Change telah <strong style='color:#991b1b'>ditolak</strong> oleh " . htmlspecialchars(stepLabel($step)) . ".</p>
-                <table style='width:100%;border-collapse:collapse;font-size:13px'>
-                    <tr><td style='color:#888;padding:6px 0;width:140px'>Change No</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>$changeNo</td></tr>
-                    <tr><td style='color:#888;padding:6px 0'>Part Name</td><td style='padding:6px 0'>{$cr['part_name']}</td></tr>
-                    <tr><td style='color:#888;padding:6px 0'>Kategori</td><td style='padding:6px 0'>{$cr['category_4m']}</td></tr>
-                    $alasan
-                </table>
-                <p style='color:#444;font-size:12px;margin:16px 0 0'>Silakan login ke sistem untuk melihat detail dan melakukan edit & resubmit.</p>
-                <div style='margin:20px 0'>
-                    <a href='$detailUrl' style='background:#991b1b;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Lihat Detail & Resubmit</a>
-                </div>";
-            sendMail($submitter['email'], $submitter['name'], "[4M Change] Permohonan Ditolak — $changeNo", mailTemplate("Permohonan Ditolak", $bodyHtml, '#991b1b'));
+            $infoTable = mailInfoTable([
+                'Change No' => "<span style='font-family:monospace'>$changeNo</span>",
+                'Part Name' => $cr['part_name'],
+                'Category'  => $cr['category_4m'],
+                'Reason'    => $note ? "<span style='color:#991b1b'>" . htmlspecialchars($note) . "</span>" : null,
+            ]);
+            $bodyHtml = mailGreeting($submitter['name']) . "
+                <p style='margin:0 0 14px'>Your 4M Change request has been <strong style='color:#991b1b'>rejected</strong> by " . htmlspecialchars(stepLabel($step)) . ".</p>
+                $infoTable
+                <p style='margin:14px 0 0;font-size:12.5px;color:#6b7280'>Please log in to the system to view the details and edit & resubmit.</p>
+                " . mailButton($detailUrl, 'View Detail & Resubmit', '#991b1b') . "";
+            sendMail($submitter['email'], $submitter['name'], changeSubject('Rejected', $cr['category_4m'], $cr['part_name'], $changeNo), mailTemplate('Request Rejected', $bodyHtml, '#991b1b'));
         }
     }
 

@@ -32,13 +32,13 @@ if (isLoggedIn()) {
             </div>
 
             <?php if (isset($_GET['error'])): ?>
-                <div class="alert alert-danger mb-16">Username atau password salah.</div>
+                <div class="alert alert-danger mb-16">Incorrect username or password.</div>
             <?php endif; ?>
 
             <form action="process_login.php" method="POST">
                 <div class="mb-12">
                     <label class="form-label">Username</label>
-                    <input type="text" name="username" class="form-control" placeholder="Masukkan username" required
+                    <input type="text" name="username" class="form-control" placeholder="Enter username" required
                         autofocus>
                 </div>
                 <div class="mb-12">

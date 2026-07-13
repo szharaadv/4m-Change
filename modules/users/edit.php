@@ -28,9 +28,9 @@ $departments = [
 <div class="page-header">
     <div>
         <div class="page-title">Edit User</div>
-        <div class="page-sub">Perbarui data pengguna</div>
+        <div class="page-sub">Update user data</div>
     </div>
-    <a href="index.php" class="btn">Batal</a>
+    <a href="index.php" class="btn">Cancel</a>
 </div>
 
 <?php if (isset($_GET['error'])): ?>
@@ -64,12 +64,12 @@ $departments = [
                     <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
                     <?php endforeach; ?>
                 </select>
-                <div class="form-hint" style="margin-top:4px">Role superadmin tidak dapat diubah lewat form ini.</div>
+                <div class="form-hint" style="margin-top:4px">The superadmin role cannot be changed through this form.</div>
             </div>
             <div>
                 <label class="form-label">Department</label>
                 <select name="department" class="form-control">
-                    <option value="">— Tidak ada —</option>
+                    <option value="">— None —</option>
                     <?php foreach ($departments as $dept): ?>
                     <option value="<?= e($dept) ?>" <?= ($u['department'] ?? '') === $dept ? 'selected' : '' ?>>
                         <?= e($dept) ?>
@@ -77,7 +77,7 @@ $departments = [
                     <?php endforeach; ?>
                 </select>
                 <div class="form-hint" style="margin-top:4px">
-                    Department tempat user bekerja — dipakai untuk routing approval.
+                    The department the user works in — used for approval routing.
                 </div>
             </div>
             <div>
@@ -92,22 +92,22 @@ $departments = [
 
     <div class="form-section">
         <div class="section-title"><span class="section-dot"></span>Change Password</div>
-        <div class="form-hint" style="margin-bottom:12px">Kosongkan jika tidak ingin mengubah password.</div>
+        <div class="form-hint" style="margin-bottom:12px">Leave blank if you do not want to change the password.</div>
         <div class="d-grid grid-2 gap-16">
             <div>
                 <label class="form-label">New Password</label>
-                <input type="password" name="password" class="form-control" placeholder="Minimal 6 karakter...">
+                <input type="password" name="password" class="form-control" placeholder="Minimum 6 characters...">
             </div>
             <div>
                 <label class="form-label">Confirm New Password</label>
-                <input type="password" name="password_confirm" class="form-control" placeholder="Ulangi password baru...">
+                <input type="password" name="password_confirm" class="form-control" placeholder="Re-enter new password...">
             </div>
         </div>
     </div>
 
     <div class="d-flex gap-8" style="justify-content:flex-end;padding-bottom:8px">
-        <a href="index.php" class="btn">Batal</a>
-        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+        <a href="index.php" class="btn">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
     </div>
 </form>
 

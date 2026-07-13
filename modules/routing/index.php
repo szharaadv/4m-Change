@@ -36,23 +36,23 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
 <div class="page-header">
     <div>
         <div class="page-title">Routing Management</div>
-        <div class="page-sub">Atur alur approval per department</div>
+        <div class="page-sub">Set the approval flow per department</div>
     </div>
 </div>
 
 <?php if (isset($_GET['success'])): ?>
-<div class="alert alert-success">Routing berhasil disimpan.</div>
+<div class="alert alert-success">Routing saved successfully.</div>
 <?php endif; ?>
 <?php if (isset($_GET['error'])): ?>
 <div class="alert alert-danger"><?= e($_GET['error']) ?></div>
 <?php endif; ?>
 
 <?php if (!$managers): ?>
-<div class="alert alert-warning">Belum ada user dengan role <strong>manager</strong>. Tambahkan dulu di halaman Users.</div>
+<div class="alert alert-warning">No users with the <strong>manager</strong> role yet. Add one first on the Users page.</div>
 <?php endif; ?>
 
 <?php if (!$qcUsers): ?>
-<div class="alert alert-warning">Belum ada user dengan role <strong>qc</strong>. Tambahkan dulu di halaman Users.</div>
+<div class="alert alert-warning">No users with the <strong>qc</strong> role yet. Add one first on the Users page.</div>
 <?php endif; ?>
 
 <form action="save.php" method="POST">
@@ -64,8 +64,8 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
             <thead>
                 <tr>
                     <th style="width:200px">Department</th>
-                    <th>Manager yang Approve</th>
-                    <th>QC yang Approve</th>
+                    <th>Approving Manager</th>
+                    <th>Approving QC</th>
                 </tr>
             </thead>
             <tbody>
@@ -94,7 +94,7 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
                             <?php endforeach; ?>
                         </div>
                         <?php else: ?>
-                        <span style="color:var(--muted);font-size:12px">— Belum ada manager</span>
+                        <span style="color:var(--muted);font-size:12px">— No managers yet</span>
                         <?php endif; ?>
                     </td>
                     <td style="vertical-align:top;padding-top:12px">
@@ -117,7 +117,7 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
                             <?php endforeach; ?>
                         </div>
                         <?php else: ?>
-                        <span style="color:var(--muted);font-size:12px">— Belum ada QC</span>
+                        <span style="color:var(--muted);font-size:12px">— No QC yet</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -127,7 +127,7 @@ foreach ($pdo->query("SELECT department, qc_id FROM department_qc")->fetchAll() 
     </div>
 
     <div class="d-flex gap-8" style="justify-content:flex-end;padding:16px 0">
-        <button type="submit" class="btn btn-primary">Simpan Routing</button>
+        <button type="submit" class="btn btn-primary">Save Routing</button>
     </div>
 </form>
 

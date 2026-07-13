@@ -8,7 +8,7 @@ requireRole(['admin', 'superadmin']);
 $id = (int) ($_POST['id'] ?? 0);
 
 if (!$id) {
-    header('Location: index.php?error=' . urlencode('User tidak ditemukan.'));
+    header('Location: index.php?error=' . urlencode('User not found.'));
     exit;
 }
 
@@ -17,12 +17,12 @@ $stmt->execute([$id]);
 $u = $stmt->fetch();
 
 if (!$u) {
-    header('Location: index.php?error=' . urlencode('User tidak ditemukan atau sudah aktif.'));
+    header('Location: index.php?error=' . urlencode('User not found or already active.'));
     exit;
 }
 
 if (!$u['email']) {
-    header('Location: index.php?error=' . urlencode('User tidak memiliki email.'));
+    header('Location: index.php?error=' . urlencode('User does not have an email address.'));
     exit;
 }
 
@@ -36,19 +36,13 @@ $pdo->prepare("UPDATE users SET password_token = ?, token_expires_at = ? WHERE i
 // Send setup email
 $setupUrl = APP_URL . "/modules/auth/set_password.php?token=$token";    
 
-$bodyHtml = "
-    <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>{$u['name']}</strong>,</p>
-    <p style='color:#444;font-size:13px;margin:0 0 16px'>Ini adalah email pengiriman ulang untuk setup password akun kamu di sistem <strong>4M Change</strong>. Klik tombol di bawah untuk mengatur password kamu.</p>
-    <table style='width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px'>
-        <tr><td style='color:#888;padding:6px 0;width:120px'>Username</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>{$u['username']}</td></tr>
-        <tr><td style='color:#888;padding:6px 0'>Role</td><td style='padding:6px 0'>{$u['role']}</td></tr>
-    </table>
-    <div style='margin:20px 0'>
-        <a href='$setupUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Set Password Saya</a>
-    </div>
-    <p style='color:#888;font-size:12px;margin:16px 0 0'>Link ini berlaku selama <strong>24 jam</strong>. Jika kamu tidak merasa mendaftar, abaikan email ini.</p>";
+$bodyHtml = mailGreeting($u['name']) . "
+    <p style='margin:0 0 14px'>This is a resend of your account password setup email for the <strong>4M Change</strong> system. Click the button below to set your password.</p>
+    " . mailInfoTable(['Username' => "<span style='font-family:monospace'>{$u['username']}</span>", 'Role' => $u['role']]) . "
+    " . mailButton($setupUrl, 'Set My Password') . "
+    <p style='margin:14px 0 0;font-size:12.5px;color:#6b7280'>This link is valid for <strong>24 hours</strong>. If you did not expect this, please ignore this email.</p>";
 
-sendMail($u['email'], $u['name'], '[4M Change] Setup Password — Pengiriman Ulang', mailTemplate('Setup Password Akun Anda', $bodyHtml));
+sendMail($u['email'], $u['name'], '[4M Change] Setup Password — Resend', mailTemplate('Setup Your Account Password', $bodyHtml));
 
 header('Location: index.php?success=email_resent');
 exit;

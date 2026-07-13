@@ -56,8 +56,8 @@ foreach ($approvalLogs as $log) {
     if ($log['step'] === 'qc_final') $qcFinal     = $log;
 }
 
-$actionLabel = ['CREATE'=>'Dibuat','UPDATE'=>'Diperbarui','SUBMIT'=>'Submit',
-                'RESUBMIT'=>'Resubmit','APPROVAL'=>'Disetujui','REJECTION'=>'Ditolak','CLOSED'=>'Closed'];
+$actionLabel = ['CREATE'=>'Created','UPDATE'=>'Updated','SUBMIT'=>'Submit',
+                'RESUBMIT'=>'Resubmit','APPROVAL'=>'Approved','REJECTION'=>'Rejected','CLOSED'=>'Closed'];
 $actionBadge = ['CREATE'=>'secondary','UPDATE'=>'secondary','SUBMIT'=>'primary',
                 'RESUBMIT'=>'primary','APPROVAL'=>'success','REJECTION'=>'danger','CLOSED'=>'success'];
 
@@ -87,18 +87,18 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
 ?>
 
 <?php if (isset($_GET['updated'])): ?>
-<div class="alert alert-success alert-dismissible fade show">Berhasil diproses.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<div class="alert alert-success alert-dismissible fade show">Successfully processed.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
 <?php endif; ?>
 <?php if (isset($_GET['error'])): ?>
-<div class="alert alert-danger">Terjadi kesalahan: <?= e($_GET['error']) ?></div>
+<div class="alert alert-danger">An error occurred: <?= e($_GET['error']) ?></div>
 <?php endif; ?>
 
 <!-- Page Header -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div class="d-flex align-items-center gap-3">
-        <a href="index.php" class="btn btn-outline-secondary btn-sm">← Kembali</a>
+        <a href="index.php" class="btn btn-outline-secondary btn-sm">← Back</a>
         <div>
-            <h3 class="mb-0">Detail 4M Change</h3>
+            <h3 class="mb-0">4M Change Details</h3>
             <div class="text-muted small mono"><?= e($data['change_no']) ?></div>
         </div>
     </div>
@@ -152,10 +152,10 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                     <div class="apv-sub" style="color:#16a34a">Submitted</div>
                 <?php elseif ($step['appr']): ?>
                     <div class="apv-sub" style="color:<?= $step['appr']['status']==='Approved' ? '#16a34a' : '#dc2626' ?>">
-                        <?= $step['appr']['status']==='Approved' ? 'Disetujui' : 'Ditolak' ?>
+                        <?= $step['appr']['status']==='Approved' ? 'Approved' : 'Rejected' ?>
                     </div>
                 <?php else: ?>
-                    <div class="apv-sub">Menunggu</div>
+                    <div class="apv-sub">Pending</div>
                 <?php endif; ?>
             </div>
             <?php if ($i < count($progressSteps) - 1): ?>
@@ -182,21 +182,21 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
 
 <?php if ($data['workflow_status'] === 'Rejected' && $data['rejection_note']): ?>
 <div class="rejection-banner mb-3">
-    <div class="rb-title">Alasan Penolakan</div>
+    <div class="rb-title">Rejection Reason</div>
     <div class="rb-note"><?= e($data['rejection_note']) ?></div>
 </div>
 <?php endif; ?>
 
-<!-- Informasi Umum & Status Approval -->
+<!-- General Information & Approval Status -->
 <div class="row g-3 mb-3">
     <div class="col-12">
     <div class="card card-soft">
-        <div class="card-header bg-white fw-semibold">Informasi Umum</div>
+        <div class="card-header bg-white fw-semibold">General Information</div>
         <div class="card-body">
             <div class="row g-0">
                 <div class="col-md-6" style="border-right:1px solid #f1f3f5">
                     <div class="info-row"><div class="info-key">Change No</div><div class="info-val mono"><?= e($data['change_no']) ?></div></div>
-                    <div class="info-row"><div class="info-key">Kategori 4M</div><div class="info-val"><?= e($data['category_4m']) ?></div></div>
+                    <div class="info-row"><div class="info-key">4M Category</div><div class="info-val"><?= e($data['category_4m']) ?></div></div>
                     <div class="info-row"><div class="info-key">Part Name</div><div class="info-val"><?= e($data['part_name']) ?></div></div>
                     <div class="info-row"><div class="info-key">Part No</div><div class="info-val"><?= e($data['part_no'] ?: '—') ?></div></div>
                     <div class="info-row"><div class="info-key">PIC</div><div class="info-val"><?= e($data['pic_name']) ?></div></div>
@@ -207,17 +207,18 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                     <div class="info-row"><div class="info-key">Start Lot</div><div class="info-val"><?= e($data['start_lot_serial'] ?: '—') ?></div></div>
                     <div class="info-row"><div class="info-key">Confirm Customer</div><div class="info-val"><?= e($data['confirm_customer']) ?></div></div>
                     <div class="info-row"><div class="info-key">Judge Status</div><div class="info-val"><span class="badge text-bg-<?= judgeBadgeClass($data['judge_status']) ?>"><?= e($data['judge_status']) ?></span></div></div>
-                    <div class="info-row"><div class="info-key">Dibuat oleh</div><div class="info-val"><?= e($data['creator_name']) ?></div></div>
-                    <div class="info-row"><div class="info-key">Dibuat pada</div><div class="info-val text-muted small"><?= date('d M Y H:i', strtotime($data['created_at'])) ?></div></div>
+                    <div class="info-row"><div class="info-key">Created by</div><div class="info-val"><?= e($data['creator_name']) ?></div></div>
+                    <div class="info-row"><div class="info-key">Created at</div><div class="info-val text-muted small"><?= date('d M Y H:i', strtotime($data['created_at'])) ?></div></div>
+                    <div class="info-row"><div class="info-key">4M Change Date</div><div class="info-val"><?= $data['change_date'] ? date('d M Y', strtotime($data['change_date'])) : '—' ?></div></div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Detail Perubahan -->
+<!-- Change Details -->
 <div class="card card-soft mb-3">
-    <div class="card-header bg-white fw-semibold">Detail Perubahan</div>
+    <div class="card-header bg-white fw-semibold">Change Details</div>
     <div class="card-body">
         <div class="row g-4">
             <div class="col-md-6"><div class="form-label">4M Change Item</div><div style="font-size:13px;line-height:1.6"><?= nl2br(e($data['change_item'] ?: '—')) ?></div></div>
@@ -244,7 +245,7 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                         class="img-fluid rounded photo-thumb"
                         style="max-height:220px;object-fit:cover;width:100%;border:1px solid #e2e5ea;cursor:zoom-in"
                         onclick="openLightbox(this.src, 'Before')"
-                        title="Klik untuk perbesar">
+                        title="Click to enlarge">
                 </div>
                 <?php endif; ?>
                 <?php if ($afterPhoto): ?>
@@ -254,7 +255,7 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
                         class="img-fluid rounded photo-thumb"
                         style="max-height:220px;object-fit:cover;width:100%;border:1px solid #e2e5ea;cursor:zoom-in"
                         onclick="openLightbox(this.src, 'After')"
-                        title="Klik untuk perbesar">
+                        title="Click to enlarge">
                 </div>
                 <?php endif; ?>
         </div>
@@ -270,7 +271,7 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
     <div style="position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer;line-height:1;user-select:none" onclick="closeLightbox()">×</div>
     <div id="lightboxLabel" style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px"></div>
     <img id="lightboxImg" src="" style="max-width:92vw;max-height:88vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.5)" onclick="event.stopPropagation()">
-    <div style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:12px">Klik di luar foto atau tekan ESC untuk tutup</div>
+    <div style="color:rgba(255,255,255,0.35);font-size:12px;margin-top:12px">Click outside the photo or press ESC to close</div>
 </div>
 
 <script>
@@ -294,7 +295,7 @@ document.addEventListener('keydown', function(e) {
 <!-- Attachment -->
 <?php if ($attachments): ?>
 <div class="card card-soft mb-3">
-    <div class="card-header bg-white fw-semibold">Attachment Lainnya</div>
+    <div class="card-header bg-white fw-semibold">Other Attachments</div>
     <div class="card-body d-flex flex-wrap gap-2">
         <?php foreach ($attachments as $att): ?>
         <a href="<?= e(navLink($att['file_path'])) ?>" target="_blank" class="btn btn-outline-secondary btn-sm">
@@ -305,7 +306,7 @@ document.addEventListener('keydown', function(e) {
 </div>
 <?php endif; ?>
 
-<!-- Form Approval Info — hanya muncul untuk manager -->
+<!-- Approval Info Form — only shown for manager -->
 <?php if ($canApproveNow): ?>
 <div class="card card-soft mb-3">
     <div class="card-header bg-white fw-semibold">Approval Info</div>
@@ -313,6 +314,7 @@ document.addEventListener('keydown', function(e) {
         <form action="process_approval.php" method="POST" id="approvalForm">
             <input type="hidden" name="id" value="<?= $data['id'] ?>">
             <input type="hidden" name="action" id="approvalAction" value="">
+            <input type="hidden" name="_csrf" value="<?= csrfToken() ?>">
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Judge Status <span class="text-danger">*</span></label>
@@ -341,20 +343,20 @@ document.addEventListener('keydown', function(e) {
                 <div class="col-12">
                     <label class="form-label fw-semibold">Evidence Note</label>
                     <textarea name="evidence_note" class="form-control" rows="2"
-                        placeholder="Catatan bukti / keterangan tambahan..."><?= e($data['evidence_note'] ?? '') ?></textarea>
+                        placeholder="Evidence note / additional remarks..."><?= e($data['evidence_note'] ?? '') ?></textarea>
                 </div>
                 <div class="col-12">
-                    <label class="form-label">Catatan (opsional)</label>
-                    <textarea name="note" class="form-control" rows="2" placeholder="Tambahkan catatan..."></textarea>
+                    <label class="form-label">Note (optional)</label>
+                    <textarea name="note" class="form-control" rows="2" placeholder="Add a note..."></textarea>
                 </div>
             </div>
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-success w-50"
-                    onclick="document.getElementById('approvalAction').value='approve';if(confirm('Approve permohonan ini?'))document.getElementById('approvalForm').submit()">
+                    onclick="document.getElementById('approvalAction').value='approve';if(confirm('Approve this request?'))document.getElementById('approvalForm').submit()">
                     ✓ Approve
                 </button>
                 <button type="button" class="btn btn-outline-danger w-50"
-                    onclick="document.getElementById('approvalAction').value='reject';if(confirm('Tolak permohonan ini?'))document.getElementById('approvalForm').submit()">
+                    onclick="document.getElementById('approvalAction').value='reject';if(confirm('Reject this request?'))document.getElementById('approvalForm').submit()">
                     ✗ Reject
                 </button>
             </div>
@@ -363,12 +365,12 @@ document.addEventListener('keydown', function(e) {
 </div>
 <?php endif; ?>
 
-<!-- Riwayat Aktivitas -->
+<!-- Activity History -->
 <div class="card card-soft">
-    <div class="card-header bg-white fw-semibold">Riwayat Aktivitas</div>
+    <div class="card-header bg-white fw-semibold">Activity History</div>
     <div class="card-body">
         <?php if (!$histories): ?>
-        <div class="text-muted small">Tidak ada riwayat.</div>
+        <div class="text-muted small">No history available.</div>
         <?php endif; ?>
         <?php foreach ($histories as $h): ?>
         <div class="history-item">

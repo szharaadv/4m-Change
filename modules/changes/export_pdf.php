@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 requireLogin();
-// DEBUG SEMENTARA — hapus setelah selesai
+// TEMPORARY DEBUG — remove when done
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -89,14 +89,14 @@ function approvalRow(string $label, ?array $appr): string
         return "
         <tr>
             <td style='padding:6px 10px;color:#888;width:160px'>$label</td>
-            <td style='padding:6px 10px;color:#aaa'>Menunggu</td>
+            <td style='padding:6px 10px;color:#aaa'>Pending</td>
             <td style='padding:6px 10px;color:#aaa'>—</td>
             <td style='padding:6px 10px;color:#aaa'>—</td>
         </tr>";
 
     $status = $appr['status'] === 'Approved'
-        ? "<span style='color:#16a34a;font-weight:600'>✓ Disetujui</span>"
-        : "<span style='color:#dc2626;font-weight:600'>✗ Ditolak</span>";
+        ? "<span style='color:#16a34a;font-weight:600'>✓ Approved</span>"
+        : "<span style='color:#dc2626;font-weight:600'>✗ Rejected</span>";
     $date = date('d M Y H:i', strtotime($appr['acted_at']));
 
     return "
@@ -138,7 +138,7 @@ $html = "
     <div style='display:table;width:100%'>
         <div style='display:table-cell;vertical-align:middle'>
             <div class='header-title'>4M Change — " . htmlspecialchars($data['change_no']) . "</div>
-            <div class='header-sub'>Dicetak pada " . date('d M Y H:i') . " Oleh <b>" . htmlspecialchars(currentUser()['name']) . "</b> · Quality Management System</div>
+            <div class='header-sub'>Printed on " . date('d M Y H:i') . " by <b>" . htmlspecialchars(currentUser()['name']) . "</b> · Quality Management System</div>
         </div>
         <div style='display:table-cell;text-align:right;vertical-align:middle'>
             <span class='badge-red'>" . htmlspecialchars($data['workflow_status']) . "</span>
@@ -146,22 +146,22 @@ $html = "
     </div>
 </div>
 
-<!-- Informasi Umum -->
+<!-- General Information -->
 <div class='section'>
-    <div class='section-title'>Informasi Umum</div>
+    <div class='section-title'>General Information</div>
     <table class='info'>
         <tr><td class='key'>Change No</td><td><b>" . htmlspecialchars($data['change_no']) . "</b></td><td class='key'>Location</td><td>" . htmlspecialchars($data['implement_location'] ?: '—') . "</td></tr>
-        <tr><td class='key'>Kategori 4M</td><td>" . htmlspecialchars($data['category_4m']) . "</td><td class='key'>Start Lot</td><td>" . htmlspecialchars($data['start_lot_serial'] ?: '—') . "</td></tr>
+        <tr><td class='key'>4M Category</td><td>" . htmlspecialchars($data['category_4m']) . "</td><td class='key'>Start Lot</td><td>" . htmlspecialchars($data['start_lot_serial'] ?: '—') . "</td></tr>
         <tr><td class='key'>Part Name</td><td>" . htmlspecialchars($data['part_name']) . "</td><td class='key'>Confirm Customer</td><td>" . htmlspecialchars($data['confirm_customer']) . "</td></tr>
         <tr><td class='key'>Part No</td><td>" . htmlspecialchars($data['part_no'] ?: '—') . "</td><td class='key'>Judge Status</td><td>" . htmlspecialchars($data['judge_status']) . "</td></tr>
-        <tr><td class='key'>PIC</td><td>" . htmlspecialchars($data['pic_name']) . "</td><td class='key'>Dibuat oleh</td><td>" . htmlspecialchars($data['creator_name']) . "</td></tr>
-        <tr><td class='key'>Model</td><td>" . htmlspecialchars($data['model'] ?: '—') . "</td><td class='key'>Dibuat pada</td><td>" . date('d M Y H:i', strtotime($data['created_at'])) . "</td></tr>
+        <tr><td class='key'>PIC</td><td>" . htmlspecialchars($data['pic_name']) . "</td><td class='key'>Submitted By</td><td>" . htmlspecialchars($data['creator_name']) . "</td></tr>
+        <tr><td class='key'>Model</td><td>" . htmlspecialchars($data['model'] ?: '—') . "</td><td class='key'>Created At</td><td>" . date('d M Y H:i', strtotime($data['created_at'])) . "</td></tr>
     </table>
 </div>
 
-<!-- Detail Perubahan -->
+<!-- Change Details -->
 <div class='section'>
-    <div class='section-title'>Detail Perubahan</div>
+    <div class='section-title'>Change Details</div>
     <table class='info'>
         <tr><td class='key' style='vertical-align:top'>4M Change Item</td><td>" . nl2br(htmlspecialchars($data['change_item'] ?: '—')) . "</td><td class='key' style='vertical-align:top'>Action</td><td>" . nl2br(htmlspecialchars($data['action_plan'] ?: '—')) . "</td></tr>
         <tr><td class='key' style='vertical-align:top'>Before</td><td>" . nl2br(htmlspecialchars($data['before_desc'] ?: '—')) . "</td><td class='key' style='vertical-align:top'>After</td><td>" . nl2br(htmlspecialchars($data['after_desc'] ?: '—')) . "</td></tr>
@@ -169,16 +169,16 @@ $html = "
     </table>
 </div>
 
-<!-- Status Approval -->
+<!-- Approval Status -->
 <div class='section'>
-    <div class='section-title'>Status Approval</div>
+    <div class='section-title'>Approval Status</div>
     <table class='approval'>
         <thead>
             <tr>
-                <th>Tahap</th>
+                <th>Stage</th>
                 <th>Approver</th>
                 <th>Status</th>
-                <th>Tanggal</th>
+                <th>Date</th>
             </tr>
         </thead>
         <tbody>

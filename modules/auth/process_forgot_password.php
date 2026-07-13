@@ -5,7 +5,7 @@ require_once '../../helpers/mailer.php';
 $email = trim($_POST['email'] ?? '');
 
 if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header('Location: forgot_password.php?error=' . urlencode('Format email tidak valid.'));
+    header('Location: forgot_password.php?error=' . urlencode('Invalid email format.'));
     exit;
 }
 
@@ -30,17 +30,11 @@ $pdo->prepare("UPDATE users SET password_token = ?, token_expires_at = ? WHERE i
 // Send reset email
 $resetUrl = APP_URL . "/modules/auth/reset_password.php?token=$token";
 
-$bodyHtml = "
-    <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>{$user['name']}</strong>,</p>
-    <p style='color:#444;font-size:13px;margin:0 0 16px'>Kami menerima permintaan reset password untuk akun kamu di sistem <strong>4M Change</strong>. Klik tombol di bawah untuk mengatur password baru.</p>
-    <table style='width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px'>
-        <tr><td style='color:#888;padding:6px 0;width:120px'>Username</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>{$user['username']}</td></tr>
-        <tr><td style='color:#888;padding:6px 0'>Email</td><td style='padding:6px 0'>{$user['email']}</td></tr>
-    </table>
-    <div style='margin:20px 0'>
-        <a href='$resetUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Reset Password Saya</a>
-    </div>
-    <p style='color:#888;font-size:12px;margin:16px 0 0'>Link ini berlaku selama <strong>1 jam</strong>. Jika kamu tidak merasa meminta reset password, abaikan email ini.</p>";
+$bodyHtml = mailGreeting($user['name']) . "
+    <p style='margin:0 0 14px'>We received a request to reset the password for your account on the <strong>4M Change</strong> system. Click the button below to set a new password.</p>
+    " . mailInfoTable(['Username' => "<span style='font-family:monospace'>{$user['username']}</span>", 'Email' => $user['email']]) . "
+    " . mailButton($resetUrl, 'Reset My Password') . "
+    <p style='margin:14px 0 0;font-size:12.5px;color:#6b7280'>This link is valid for <strong>1 hour</strong>. If you did not request a password reset, please ignore this email.</p>";
 
 sendMail($email, $user['name'], '[4M Change] Reset Password', mailTemplate('Reset Password', $bodyHtml));
 

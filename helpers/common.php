@@ -18,7 +18,7 @@ function ensureUploadPath(string $path): void
 {
     if (!is_dir($path)) {
         if (!mkdir($path, 0777, true) && !is_dir($path)) {
-            throw new Exception('Gagal membuat folder: ' . $path);
+            throw new Exception('Failed to create folder: ' . $path);
         }
     }
 }
@@ -26,21 +26,21 @@ function ensureUploadPath(string $path): void
 function uploadFileSingle(?array $file, string $folder, array $allowedExt, int $maxSize = 10485760): array
 {
     if (!isset($file) || !is_array($file)) {
-        return ['success' => false, 'message' => 'File tidak ditemukan'];
+        return ['success' => false, 'message' => 'File not found'];
     }
     if (!isset($file['error']) || $file['error'] === UPLOAD_ERR_NO_FILE) {
-        return ['success' => false, 'message' => 'Tidak ada file dipilih'];
+        return ['success' => false, 'message' => 'No file selected'];
     }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return ['success' => false, 'message' => 'Upload error: ' . $file['error']];
     }
     if ($file['size'] > $maxSize) {
-        return ['success' => false, 'message' => 'Ukuran file terlalu besar. Maksimal 5 MB'];
+        return ['success' => false, 'message' => 'File size is too large. Maximum 5 MB'];
     }
 
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     if (!in_array($ext, $allowedExt, true)) {
-        return ['success' => false, 'message' => 'Format file tidak diizinkan: .' . $ext];
+        return ['success' => false, 'message' => 'File format not allowed: .' . $ext];
     }
 
     $safeName   = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file['name']);
@@ -54,11 +54,11 @@ function uploadFileSingle(?array $file, string $folder, array $allowedExt, int $
     }
 
     if (!is_writable($targetDir)) {
-        return ['success' => false, 'message' => 'Folder upload tidak writable'];
+        return ['success' => false, 'message' => 'Upload folder is not writable'];
     }
 
     if (!move_uploaded_file($file['tmp_name'], $targetDir . $newName)) {
-        return ['success' => false, 'message' => 'Gagal memindahkan file'];
+        return ['success' => false, 'message' => 'Failed to move file'];
     }
 
     return [
@@ -170,6 +170,37 @@ function getNeedCount(PDO $pdo, string $role, int $userId): int
         return (int)$stmt->fetchColumn();
     }
     return 0;
+}
+
+function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 10): array
+{
+    if ($role === 'manager') {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT cr.id, cr.change_no, cr.category_4m, cr.part_name, cr.created_at, u.name AS submitter_name
+            FROM change_requests cr
+            JOIN users u ON cr.created_by = u.id
+            JOIN department_managers dm ON dm.department = u.department AND dm.manager_id = ?
+            WHERE cr.workflow_status = 'Submitted'
+            ORDER BY cr.created_at ASC
+            LIMIT $limit
+        ");
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+    if ($role === 'qc') {
+        $stmt = $pdo->prepare("
+            SELECT DISTINCT cr.id, cr.change_no, cr.category_4m, cr.part_name, cr.created_at, u.name AS submitter_name
+            FROM change_requests cr
+            JOIN users u ON cr.created_by = u.id
+            JOIN department_qc dq ON dq.department = u.department AND dq.qc_id = ?
+            WHERE cr.workflow_status = 'Manager Approved'
+            ORDER BY cr.created_at ASC
+            LIMIT $limit
+        ");
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+    return [];
 }
 
 function getDeptManagers(PDO $pdo, string $department): array

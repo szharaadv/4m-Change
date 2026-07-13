@@ -5,8 +5,8 @@ $token = trim($_GET['token'] ?? '');
 
 if (!$token) {
     die('<div style="font-family:sans-serif;padding:40px;text-align:center">
-        <h2>Link tidak valid.</h2>
-        <p>Token tidak ditemukan.</p>
+        <h2>Invalid link.</h2>
+        <p>Token not found.</p>
     </div>');
 }
 
@@ -17,8 +17,8 @@ $user = $stmt->fetch();
 
 if (!$user) {
     die('<div style="font-family:sans-serif;padding:40px;text-align:center">
-        <h2>Link tidak valid atau sudah kadaluarsa.</h2>
-        <p>Silakan hubungi administrator untuk mendapatkan link baru.</p>
+        <h2>Invalid or expired link.</h2>
+        <p>Please contact the administrator to get a new link.</p>
     </div>');
 }
 ?>
@@ -38,8 +38,8 @@ if (!$user) {
             <div class="login-brand">
                 <div class="login-mark">4M</div>
                 <div class="login-title">Setup Password</div>
-                <div class="login-sub">Halo, <strong><?= htmlspecialchars($user['name']) ?></strong>! Atur password akun
-                    kamu.</div>
+                <div class="login-sub">Hello, <strong><?= htmlspecialchars($user['name']) ?></strong>! Set your account
+                    password.</div>
             </div>
 
             <?php if (isset($_GET['error'])): ?>
@@ -54,17 +54,17 @@ if (!$user) {
                     <input type="text" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" disabled>
                 </div>
                 <div style="margin-bottom:14px">
-                    <label class="form-label">Password Baru <span class="required">*</span></label>
+                    <label class="form-label">New Password <span class="required">*</span></label>
                     <input type="password" name="password" class="form-control" required
-                        placeholder="Minimal 6 karakter..." autofocus>
+                        placeholder="Minimum 6 characters..." autofocus>
                 </div>
                 <div style="margin-bottom:20px">
-                    <label class="form-label">Konfirmasi Password <span class="required">*</span></label>
+                    <label class="form-label">Confirm Password <span class="required">*</span></label>
                     <input type="password" name="password_confirm" class="form-control" required
-                        placeholder="Ulangi password...">
+                        placeholder="Repeat password...">
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100">Simpan Password & Login</button>
+                <button type="submit" class="btn btn-primary w-100">Save Password & Log In</button>
             </form>
         </div>
     </div>

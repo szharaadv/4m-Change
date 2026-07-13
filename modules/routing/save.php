@@ -17,7 +17,7 @@ $routing = $_POST['routing'] ?? [];
 try {
     $pdo->beginTransaction();
 
-    // Hapus semua routing lama
+    // Delete all existing routing
     $pdo->exec("DELETE FROM department_managers");
     $pdo->exec("DELETE FROM department_qc");
 

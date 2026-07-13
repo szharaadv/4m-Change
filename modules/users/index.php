@@ -20,7 +20,7 @@ $roleBadge = [
 <div class="page-header">
     <div>
         <div class="page-title">User Management</div>
-        <div class="page-sub">Kelola semua akun pengguna sistem</div>
+        <div class="page-sub">Manage all system user accounts</div>
     </div>
     <div class="d-flex gap-8">
         <?php
@@ -28,7 +28,7 @@ $roleBadge = [
         ?>
         <?php if ($pendingCount > 0): ?>
         <form method="POST" action="resend_all.php"
-            onsubmit="return confirm('Kirim email setup ke <?= $pendingCount ?> user yang belum aktif?')">
+            onsubmit="return confirm('Send setup email to <?= $pendingCount ?> inactive user(s)?')">
             <button type="submit" class="btn" style="background:#eff6ff;color:#2563eb;border-color:#93c5fd">
                 📧 Resend All Pending (<?= $pendingCount ?>)
             </button>
@@ -42,12 +42,12 @@ $roleBadge = [
 <div class="alert alert-success">
     <?php
     $msg = [
-        'created'      => 'User berhasil ditambahkan.',
-        'updated'      => 'User berhasil diperbarui.',
-        'deleted'      => 'User berhasil dihapus.',
-        'email_resent' => $_GET['msg'] ?? 'Email setup berhasil dikirim ulang.',
+        'created'      => 'User added successfully.',
+        'updated'      => 'User updated successfully.',
+        'deleted'      => 'User deleted successfully.',
+        'email_resent' => $_GET['msg'] ?? 'Setup email resent successfully.',
     ];
-    echo $msg[$_GET['success']] ?? 'Berhasil.';
+    echo $msg[$_GET['success']] ?? 'Success.';
 
     ?>
 </div>
@@ -59,7 +59,7 @@ $roleBadge = [
 
 <div class="table-wrap">
     <div class="card-header">
-        Semua User <span style="color:var(--muted);font-weight:400">(<?= count($users) ?>)</span>
+        All Users <span style="color:var(--muted);font-weight:400">(<?= count($users) ?>)</span>
     </div>
     <table class="table">
         <thead>
@@ -76,7 +76,7 @@ $roleBadge = [
         </thead>
         <tbody>
             <?php if (!$users): ?>
-            <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Tidak ada user.</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No users found.</td></tr>
             <?php endif; ?>
             <?php foreach ($users as $i => $u): ?>
             <tr>
@@ -108,14 +108,14 @@ $roleBadge = [
                             <input type="hidden" name="id" value="<?= $u['id'] ?>">
                             <button type="submit" class="btn btn-sm"
                                 style="background:#eff6ff;color:#2563eb;border-color:#93c5fd"
-                                onclick="return confirm('Kirim ulang email setup ke <?= e($u['name']) ?>?')">
+                                onclick="return confirm('Resend setup email to <?= e($u['name']) ?>?')">
                                 Resend Email
                             </button>
                         </form>
                         <?php endif; ?>
                         <?php if ($u['id'] !== currentUserId()): ?>
                         <form method="POST" action="delete.php"
-                            onsubmit="return confirm('Hapus user <?= e($u['name']) ?>?')">
+                            onsubmit="return confirm('Delete user <?= e($u['name']) ?>?')">
                             <input type="hidden" name="id" value="<?= $u['id'] ?>">
                             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                         </form>
