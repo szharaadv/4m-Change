@@ -61,7 +61,7 @@ $out = fopen('php://output', 'w');
 
 fputcsv($out, [
     'Change No',
-    'Kategori',
+    'Category',
     'PIC',
     'Part No',
     'Part Name',
@@ -76,9 +76,9 @@ fputcsv($out, [
     'Confirm Customer',
     'Evidence Note',
     'Workflow Status',
-    'Dibuat Oleh',
-    'Dibuat Pada',
-    'Diperbarui Pada',
+    'Submitted By',
+    'Created At',
+    'Updated At',
 ]);
 
 foreach ($rows as $row) {

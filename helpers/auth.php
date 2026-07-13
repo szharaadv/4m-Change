@@ -46,9 +46,9 @@ function requireRole(array $roles): void
     if (!in_array(currentUserRole(), $roles, true)) {
         http_response_code(403);
         die('<div style="font-family:sans-serif;padding:40px;text-align:center">
-            <h2>403 — Akses Ditolak</h2>
-            <p>Anda tidak memiliki hak akses ke halaman ini.</p>
-            <a href="' . navLink('modules/dashboard/index.php') . '">Kembali ke Dashboard</a>
+            <h2>403 — Access Denied</h2>
+            <p>You do not have permission to access this page.</p>
+            <a href="' . navLink('modules/dashboard/index.php') . '">Back to Dashboard</a>
         </div>');
     }
 }

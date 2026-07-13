@@ -23,14 +23,14 @@ if ($valid && $user['is_active'] == 1) {
         'role' => $user['role'],
     ];
 
-    writeAuditLog($pdo, 'LOGIN', 'Login berhasil', $user['id'], $user['username'], $user['role']);
+    writeAuditLog($pdo, 'LOGIN', 'Login successful', $user['id'], $user['username'], $user['role']);
 
     header('Location: ' . navLink('modules/dashboard/index.php'));
     exit;
 }
 
 // Log failed login
-writeAuditLog($pdo, 'LOGIN_FAILED', 'Login gagal — username: ' . $username, null, $username, null);
+writeAuditLog($pdo, 'LOGIN_FAILED', 'Login failed — username: ' . $username, null, $username, null);
 
 header('Location: login.php?error=1');
 exit;

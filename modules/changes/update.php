@@ -3,6 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 requireRole(['admin','manager']);
+verifyCsrf();
 
 $id = (int)($_POST['id'] ?? 0);
 if (!$id) { header('Location: index.php'); exit; }
@@ -58,10 +59,10 @@ try {
         ':id'                 => $id,
     ]);
 
-    $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'UPDATE', 'Data diperbarui setelah rejection', ?)")
+    $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'UPDATE', 'Data updated after rejection', ?)")
         ->execute([$id, currentUserId()]);
 
-    $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'RESUBMIT', 'Resubmit setelah revisi', ?)")
+    $pdo->prepare("INSERT INTO change_histories (change_request_id, action_type, action_note, action_by) VALUES (?, 'RESUBMIT', 'Resubmitted after revision', ?)")
         ->execute([$id, currentUserId()]);
 
     $pdo->commit();

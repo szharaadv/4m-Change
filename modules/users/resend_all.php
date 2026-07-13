@@ -10,7 +10,7 @@ $stmt = $pdo->query("SELECT * FROM users WHERE is_active = 0 AND email != '' AND
 $pendingUsers = $stmt->fetchAll();
 
 if (empty($pendingUsers)) {
-    header('Location: index.php?error=' . urlencode('Tidak ada user pending.'));
+    header('Location: index.php?error=' . urlencode('No pending users found.'));
     exit;
 }
 
@@ -27,19 +27,13 @@ foreach ($pendingUsers as $u) {
 
     $setupUrl = APP_URL . "/modules/auth/set_password.php?token=$token";
 
-    $bodyHtml = "
-        <p style='color:#444;font-size:13px;margin:0 0 16px'>Halo <strong>{$u['name']}</strong>,</p>
-        <p style='color:#444;font-size:13px;margin:0 0 16px'>Ini adalah pengiriman ulang email setup password untuk akun kamu di sistem <strong>4M Change</strong>.</p>
-        <table style='width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px'>
-            <tr><td style='color:#888;padding:6px 0;width:120px'>Username</td><td style='padding:6px 0;font-weight:600;font-family:monospace'>{$u['username']}</td></tr>
-            <tr><td style='color:#888;padding:6px 0'>Role</td><td style='padding:6px 0'>{$u['role']}</td></tr>
-        </table>
-        <div style='margin:20px 0'>
-            <a href='$setupUrl' style='background:#D0021B;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600'>Set Password Saya</a>
-        </div>
-        <p style='color:#888;font-size:12px;margin:16px 0 0'>Link ini berlaku selama <strong>24 jam</strong>.</p>";
+    $bodyHtml = mailGreeting($u['name']) . "
+        <p style='margin:0 0 14px'>This is a resend of your account password setup email for the <strong>4M Change</strong> system.</p>
+        " . mailInfoTable(['Username' => "<span style='font-family:monospace'>{$u['username']}</span>", 'Role' => $u['role']]) . "
+        " . mailButton($setupUrl, 'Set My Password') . "
+        <p style='margin:14px 0 0;font-size:12.5px;color:#6b7280'>This link is valid for <strong>24 hours</strong>.</p>";
 
-    $sent = sendMail($u['email'], $u['name'], '[4M Change] Setup Password — Pengiriman Ulang', mailTemplate('Setup Password Akun Anda', $bodyHtml));
+    $sent = sendMail($u['email'], $u['name'], '[4M Change] Setup Password — Resend', mailTemplate('Setup Your Account Password', $bodyHtml));
 
     if ($sent) {
         $success++;
@@ -48,10 +42,10 @@ foreach ($pendingUsers as $u) {
     }
 }
 
-writeAuditLog($pdo, 'USER_UPDATED', "Resend all pending setup email — $success berhasil, $failed gagal");
+writeAuditLog($pdo, 'USER_UPDATED', "Resend all pending setup email — $success succeeded, $failed failed");
 
-$msg = "Email setup berhasil dikirim ke $success user.";
-if ($failed > 0) $msg .= " $failed gagal.";
+$msg = "Setup email sent successfully to $success user(s).";
+if ($failed > 0) $msg .= " $failed failed.";
 
 header('Location: index.php?success=email_resent&msg=' . urlencode($msg));
 exit;

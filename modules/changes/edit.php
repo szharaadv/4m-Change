@@ -25,12 +25,12 @@ $users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','qc_prod
         <div class="page-title">Edit & Resubmit</div>
         <div class="page-sub mono"><?= e($data['change_no']) ?></div>
     </div>
-    <a href="detail.php?id=<?= $id ?>" class="btn">Batal</a>
+    <a href="detail.php?id=<?= $id ?>" class="btn">Cancel</a>
 </div>
 
 <?php if ($data['rejection_note']): ?>
 <div class="rejection-banner mb-16">
-    <div class="title">Alasan Penolakan</div>
+    <div class="title">Rejection Reason</div>
     <div class="note"><?= e($data['rejection_note']) ?></div>
 </div>
 <?php endif; ?>
@@ -41,6 +41,7 @@ $users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','qc_prod
 
 <form action="update.php" method="POST">
     <input type="hidden" name="id" value="<?= $data['id'] ?>">
+    <input type="hidden" name="_csrf" value="<?= csrfToken() ?>">
 
     <div class="form-section">
         <div class="section-title"><span class="section-dot"></span>4M Category</div>
@@ -146,8 +147,8 @@ $users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','qc_prod
     </div>
 
     <div class="d-flex gap-8" style="justify-content:flex-end;padding-bottom:8px">
-        <a href="detail.php?id=<?= $id ?>" class="btn">Batal</a>
-        <button type="submit" class="btn btn-success">Simpan & Resubmit</button>
+        <a href="detail.php?id=<?= $id ?>" class="btn">Cancel</a>
+        <button type="submit" class="btn btn-success">Save & Resubmit</button>
     </div>
 </form>
 

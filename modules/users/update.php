@@ -16,29 +16,29 @@ $password        = trim($_POST['password'] ?? '');
 $passwordConfirm = $_POST['password_confirm'] ?? '';
 
 if (!$id || !$name || !$username || !$role) {
-    header('Location: edit.php?id=' . $id . '&error=' . urlencode('Semua field wajib diisi.'));
+    header('Location: edit.php?id=' . $id . '&error=' . urlencode('All fields are required.'));
     exit;
 }
 
 if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc', 'qc_prod'], true)) {
-    header('Location: edit.php?id=' . $id . '&error=' . urlencode('Role tidak valid.'));
+    header('Location: edit.php?id=' . $id . '&error=' . urlencode('Invalid role.'));
     exit;
 }
 
 $check = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ? LIMIT 1");
 $check->execute([$username, $id]);
 if ($check->fetch()) {
-    header('Location: edit.php?id=' . $id . '&error=' . urlencode('Username sudah digunakan.'));
+    header('Location: edit.php?id=' . $id . '&error=' . urlencode('Username is already in use.'));
     exit;
 }
 
 if ($password !== '') {
     if (strlen($password) < 6) {
-        header('Location: edit.php?id=' . $id . '&error=' . urlencode('Password minimal 6 karakter.'));
+        header('Location: edit.php?id=' . $id . '&error=' . urlencode('Password must be at least 6 characters.'));
         exit;
     }
     if ($password !== $passwordConfirm) {
-        header('Location: edit.php?id=' . $id . '&error=' . urlencode('Password dan konfirmasi tidak cocok.'));
+        header('Location: edit.php?id=' . $id . '&error=' . urlencode('Password and confirmation do not match.'));
         exit;
     }
 }
@@ -50,11 +50,11 @@ try {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
         $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ?, is_active = ?, password = ? WHERE id = ?")
             ->execute([$name, $username, $email ?: null, $role, $department ?: null, $isActive, $hashedPassword, $id]);
-        writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role) — termasuk reset password");
+        writeAuditLog($pdo, 'USER_UPDATED', "Edited user: $username ($role) — including password reset");
     } else {
         $pdo->prepare("UPDATE users SET name = ?, username = ?, email = ?, role = ?, department = ?, is_active = ? WHERE id = ?")
             ->execute([$name, $username, $email ?: null, $role, $department ?: null, $isActive, $id]);
-        writeAuditLog($pdo, 'USER_UPDATED', "Edit user: $username ($role)");
+        writeAuditLog($pdo, 'USER_UPDATED', "Edited user: $username ($role)");
     }
 
     $pdo->commit();

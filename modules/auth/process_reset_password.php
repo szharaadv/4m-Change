@@ -6,39 +6,39 @@ require_once '../../helpers/audit.php';
 $email = trim($_POST['email'] ?? '');
 
 if (!$email) {
-    header('Location: forgot_password.php?error=' . urlencode('Email wajib diisi.'));
+    header('Location: forgot_password.php?error=' . urlencode('Email is required.'));
     exit;
 }
 
-// Cek user
+// Check user
 $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
 $stmt->execute([$email]);
 $user = $stmt->fetch();
 
 if (!$user) {
-    header('Location: forgot_password.php?error=' . urlencode('Email tidak terdaftar.'));
+    header('Location: forgot_password.php?error=' . urlencode('Email not registered.'));
     exit;
 }
 
 // Generate token
 $token = bin2hex(random_bytes(32));
 
-// ✅ SET EXPIRED 1 JAM
+// Set expiration to 1 hour
 $expires = date('Y-m-d H:i:s', time() + 3600);
 
-// Simpan ke database
-$pdo->prepare("UPDATE users 
-    SET password_token = ?, token_expires_at = ? 
+// Save to database
+$pdo->prepare("UPDATE users
+    SET password_token = ?, token_expires_at = ?
     WHERE id = ?")
 ->execute([$token, $expires, $user['id']]);
 
-// Link reset
+// Reset link
 $resetLink = "http://yourdomain.com/modules/auth/reset_password.php?token=" . urlencode($token);
 
-// ✅ (OPTIONAL) Kirim email — kalau belum ada, bisa kamu sambung nanti
+// (OPTIONAL) Send email — connect later if not yet implemented
 /*
-mail($email, 'Reset Password', 
-    "Klik link berikut untuk reset password:\n\n$resetLink\n\nLink berlaku 1 jam."
+mail($email, 'Reset Password',
+    "Click the following link to reset your password:\n\n$resetLink\n\nThe link is valid for 1 hour."
 );
 */
 
@@ -52,6 +52,6 @@ writeAuditLog(
     $user['role']
 );
 
-// Redirect sukses
-header('Location: forgot_password.php?success=' . urlencode('Link reset password sudah dikirim ke email.'));
+// Redirect success
+header('Location: forgot_password.php?success=' . urlencode('Password reset link has been sent to your email.'));
 exit;

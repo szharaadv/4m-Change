@@ -1,4 +1,6 @@
 <?php
+// Set timezone ke Indonesia
+date_default_timezone_set('Asia/Jakarta');
 require_once __DIR__ . '/paths.php';
 
 $host    = '127.0.0.1';

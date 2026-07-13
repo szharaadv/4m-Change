@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['admin', 'superadmin']);
+requireRole(['superadmin']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -64,7 +64,7 @@ $actionGroups = [
 <div class="page-header">
     <div>
         <div class="page-title">Audit Log</div>
-        <div class="page-sub">Rekam jejak semua aktivitas pengguna sistem</div>
+        <div class="page-sub">Record of all system user activity</div>
     </div>
     <div style="font-size:12px;color:var(--muted)">Total: <strong>
             <?= number_format($total) ?>
@@ -77,7 +77,7 @@ $actionGroups = [
         <div>
             <label class="form-label">Action</label>
             <select name="action" class="form-control" style="min-width:160px">
-                <option value="">Semua Action</option>
+                <option value="">All Actions</option>
                 <?php foreach ($actionGroups as $group => $actions): ?>
                     <optgroup label="<?= $group ?>">
                         <?php foreach ($actions as $act): ?>
@@ -92,14 +92,14 @@ $actionGroups = [
         <div>
             <label class="form-label">User / Role</label>
             <input type="text" name="user" class="form-control" value="<?= e($filterUser) ?>"
-                placeholder="Cari username/role...">
+                placeholder="Search username/role...">
         </div>
         <div>
-            <label class="form-label">Dari Tanggal</label>
+            <label class="form-label">From Date</label>
             <input type="date" name="date_from" class="form-control" value="<?= e($filterDateFrom) ?>">
         </div>
         <div>
-            <label class="form-label">Sampai Tanggal</label>
+            <label class="form-label">To Date</label>
             <input type="date" name="date_to" class="form-control" value="<?= e($filterDateTo) ?>">
         </div>
         <div style="display:flex;gap:6px">
@@ -114,8 +114,8 @@ $actionGroups = [
     <div class="card-header">
         Audit Log
         <span style="color:var(--muted);font-weight:400;font-size:11px">
-            Halaman
-            <?= $page ?> dari
+            Page
+            <?= $page ?> of
             <?= $totalPage ?> ·
             <?= number_format($total) ?> total
         </span>
@@ -123,11 +123,11 @@ $actionGroups = [
     <table class="table">
         <thead>
             <tr>
-                <th>Waktu</th>
+                <th>Time</th>
                 <th>User</th>
                 <th>Role</th>
                 <th>Action</th>
-                <th>Keterangan</th>
+                <th>Description</th>
                 <th>IP Address</th>
                 <th>PC Name</th>
                 <th>Browser</th>
@@ -136,7 +136,7 @@ $actionGroups = [
         <tbody>
             <?php if (!$logs): ?>
                 <tr>
-                    <td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Tidak ada log.</td>
+                    <td colspan="8" style="text-align:center;color:var(--muted);padding:24px">No logs found.</td>
                 </tr>
             <?php endif; ?>
             <?php foreach ($logs as $log): ?>

@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['superadmin', 'admin']);
+requireRole(['superadmin']);
 verifyCsrf();
 
 $departments = [
@@ -17,7 +17,7 @@ $routing = $_POST['routing'] ?? [];
 try {
     $pdo->beginTransaction();
 
-    // Hapus semua routing lama
+    // Delete all existing routing
     $pdo->exec("DELETE FROM department_managers");
     $pdo->exec("DELETE FROM department_qc");
 
