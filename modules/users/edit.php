@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin', 'admin']);
+requireRole(['superadmin']);
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
