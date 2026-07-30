@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 
 $id = (int) ($_POST['id'] ?? 0);
 

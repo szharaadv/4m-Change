@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -59,12 +59,19 @@ $departments = [
             </div>
             <div>
                 <label class="form-label">Role <span class="required">*</span></label>
-                <select name="role" class="form-control" required>
-                    <?php foreach (['admin', 'manager', 'qc', 'qc_prod'] as $r): ?>
-                    <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <div class="form-hint" style="margin-top:4px">The superadmin role cannot be changed through this form.</div>
+                <?php if ($u['role'] === 'superadmin'): ?>
+                    <input type="text" class="form-control" value="superadmin" disabled
+                           style="background:#f5f5f5;color:var(--muted)">
+                    <input type="hidden" name="role" value="superadmin">
+                    <div class="form-hint" style="margin-top:4px">The superadmin role cannot be changed through this form.</div>
+                <?php else: ?>
+                    <select name="role" class="form-control" required>
+                        <?php foreach (['admin', 'user'] as $r): ?>
+                        <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="form-hint" style="margin-top:4px">Access for each role is configured under Roles.</div>
+                <?php endif; ?>
             </div>
             <div>
                 <label class="form-label">Department</label>

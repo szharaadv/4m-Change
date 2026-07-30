@@ -3,8 +3,8 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
+requirePermission('changes.export');
 writeAuditLog($pdo, 'EXPORT_CSV', 'Export CSV change requests');
-requireLogin();
 
 $role = currentUserRole();
 $userId = currentUserId();
@@ -27,10 +27,13 @@ if (!empty($_GET['workflow_status'])) {
 }
 
 if ($tab === 'need_approval') {
-    if (in_array($role, ['manager', 'admin'], true)) {
-        $where[] = "cr.workflow_status = 'Submitted'";
-    } elseif ($role === 'qc') {
-        $where[] = "cr.workflow_status IN ('Manager Approved','QC Approved')";
+    $approvalStatuses = [];
+    if (userCan('changes.approve_manager')) { $approvalStatuses[] = 'Submitted'; }
+    if (userCan('changes.approve_qc'))      { $approvalStatuses[] = 'Manager Approved'; $approvalStatuses[] = 'QC Approved'; }
+    if ($approvalStatuses) {
+        $ph = implode(',', array_fill(0, count($approvalStatuses), '?'));
+        $where[]  = "cr.workflow_status IN ($ph)";
+        $params   = array_merge($params, $approvalStatuses);
     } else {
         $where[] = '1=0';
     }

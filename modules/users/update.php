@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 
 $id              = (int)($_POST['id'] ?? 0);
 $name            = trim($_POST['name'] ?? '');
@@ -20,7 +20,7 @@ if (!$id || !$name || !$username || !$role) {
     exit;
 }
 
-if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc', 'qc_prod'], true)) {
+if (!in_array($role, ['superadmin', 'admin', 'user'], true)) {
     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Invalid role.'));
     exit;
 }

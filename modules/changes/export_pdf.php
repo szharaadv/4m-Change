@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireLogin();
+requirePermission('changes.export');
 // TEMPORARY DEBUG — remove when done
 ini_set('display_errors', 1);
 error_reporting(E_ALL);

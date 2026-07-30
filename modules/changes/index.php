@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireLogin();
+requirePermission('changes.view');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -20,9 +20,16 @@ if (!empty($_GET['workflow_status'])) { $where[] = 'cr.workflow_status = ?'; $pa
 
 // Tab filters
 if ($tab === 'need_approval') {
-    if (in_array($role, ['manager','admin'], true)) { $where[] = "cr.workflow_status = 'Submitted'"; }
-    elseif ($role === 'qc') { $where[] = "cr.workflow_status IN ('Manager Approved','QC Approved')"; }
-    else { $where[] = '1=0'; }
+    $approvalStatuses = [];
+    if (userCan('changes.approve_manager')) { $approvalStatuses[] = 'Submitted'; }
+    if (userCan('changes.approve_qc'))      { $approvalStatuses[] = 'Manager Approved'; $approvalStatuses[] = 'QC Approved'; }
+    if ($approvalStatuses) {
+        $ph = implode(',', array_fill(0, count($approvalStatuses), '?'));
+        $where[]  = "cr.workflow_status IN ($ph)";
+        $params   = array_merge($params, $approvalStatuses);
+    } else {
+        $where[] = '1=0';
+    }
 }
 
 $joinApproval = '';
@@ -63,14 +70,16 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
         <div class="page-sub">History</div>
     </div>
     <div class="d-flex gap-8">
+        <?php if (userCan('changes.export')): ?>
         <a href="export_csv.php?<?= http_build_query(array_merge($_GET, ['tab' => $tab])) ?>" class="btn">Export CSV</a>
-        <?php if (in_array($role, ['admin','manager','qc','qc_prod'], true)): ?>
+        <?php endif; ?>
+        <?php if (userCan('changes.create')): ?>
         <a href="create.php" class="btn btn-primary">+ New Change</a>
         <?php endif; ?>
     </div>
 </div>
 
-<?php $isApprover = in_array($role, ['manager','qc'], true); ?>
+<?php $isApprover = canApproveAny(); ?>
 <div class="stat-grid">
     <div class="stat-card"><div class="stat-label">Total Change</div><div class="stat-val"><?= $totalChange ?></div></div>
     <?php if ($isApprover): ?>
@@ -168,7 +177,7 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
                 <td class="text-muted" style="font-size:12px"><?= date('d M Y', strtotime($row['created_at'])) ?></td>
                 <td onclick="event.stopPropagation()">
                     <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-sm">Details</a>
-                    <?php if (in_array($role, ['admin','qc_prod'], true) && $row['workflow_status'] === 'Rejected'): ?>
+                    <?php if (userCan('changes.edit') && $row['workflow_status'] === 'Rejected'): ?>
                     <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm" style="margin-top:4px;display:block">Edit</a>
                     <?php endif; ?>
                 </td>

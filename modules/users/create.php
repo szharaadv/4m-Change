@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 ?>
@@ -40,11 +40,10 @@ include '../../templates/navbar.php';
                 <label class="form-label">Role <span class="required">*</span></label>
                 <select name="role" class="form-control" required>
                     <option value="">Select role...</option>
-                    <option value="qc_prod">qc_prod</option>
+                    <option value="user">user</option>
                     <option value="admin">admin</option>
-                    <option value="manager">manager</option>
-                    <option value="qc">qc</option>
                 </select>
+                <div class="form-hint" style="margin-top:4px">Role access is configured by the superadmin under Roles.</div>
             </div>
         </div>
     </div>

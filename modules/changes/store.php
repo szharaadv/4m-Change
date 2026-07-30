@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
-requireRole(['admin', 'manager', 'qc']);
+requirePermission('changes.create');
 verifyCsrf();
 
 try {
@@ -128,9 +128,15 @@ try {
     // Route to the manager of the submitter's department
     $mgrUsers = getDeptManagers($pdo, $submitterDept);
 
-    // Fallback: if the department isn't routed yet, send to all managers
+    // Fallback: if the department isn't routed yet, notify everyone
+    // assigned as a manager approver in any department.
     if (empty($mgrUsers)) {
-        $mgrUsers = $pdo->query("SELECT name, email FROM users WHERE role='manager' AND is_active=1 AND email != ''")->fetchAll();
+        $mgrUsers = $pdo->query("
+            SELECT DISTINCT u.name, u.email
+            FROM users u
+            JOIN department_managers dm ON dm.manager_id = u.id
+            WHERE u.is_active = 1 AND u.email IS NOT NULL AND u.email != ''
+        ")->fetchAll();
     }
 
     $infoTable = mailInfoTable([

@@ -67,6 +67,12 @@ Atau import langsung:
 
 Database `db_4m_change` akan dibuat otomatis beserta semua tabel dan data demo.
 
+> **Upgrade dari install lama?** Jangan jalankan `database.sql` ulang.
+> Jalankan `migrations/migration_002_three_roles_and_permissions.sql` untuk
+> menggabungkan role lama (manager/qc/qc_prod) menjadi `user`, membuat tabel
+> `role_permissions`, dan mengisi permission default. Pastikan minimal satu
+> akun ber-role `superadmin`.
+
 ---
 
 ### 3. Konfigurasi Database (jika perlu)
@@ -87,14 +93,31 @@ Buka browser → **http://localhost/4m-change**
 
 ---
 
+## Peran (Roles)
+
+Sistem memakai **3 role**:
+
+| Role         | Keterangan                                                                 |
+|--------------|-----------------------------------------------------------------------------|
+| `superadmin` | Akses penuh **selalu**. Satu-satunya role yang bisa mengatur hak akses role lain (menu **Roles**). |
+| `admin`      | Hak aksesnya diatur oleh superadmin (default: penuh operasional + kelola user/routing/audit). |
+| `user`       | Hak aksesnya diatur oleh superadmin (default: buat/edit/approve/export change request). |
+
+Superadmin membuka menu **Roles** untuk memberi/mencabut permission per role
+(lihat, buat, edit, approve manager, approve QC, export, kelola user, kelola
+routing, lihat audit log). Superadmin selalu punya semua permission dan
+tidak bisa dinonaktifkan.
+
+Siapa yang melakukan approval tahap Manager vs QC ditentukan oleh **Routing
+per departemen** + permission approve — bukan lagi oleh nama role.
+
 ## Akun Demo
 
-| Username | Password | Role        | Hak Akses                          |
-|----------|----------|-------------|-------------------------------------|
-| admin    | admin123 | Admin       | Full akses semua fitur              |
-| manager  | admin123 | Manager     | Approval tahap 1 (Submitted)        |
-| qc_prod  | admin123 | QC Prod     | Buat & edit change request          |
-| qc       | admin123 | QC          | Approval tahap 2 & 3                |
+| Username   | Password | Role        |
+|------------|----------|-------------|
+| superadmin | admin123 | superadmin  |
+| admin      | admin123 | admin       |
+| user       | admin123 | user        |
 
 ---
 
@@ -154,7 +177,8 @@ Draft → Submitted → Manager Approved → QC Approved → Closed
 
 | Tabel               | Keterangan                              |
 |---------------------|-----------------------------------------|
-| users               | Akun pengguna dengan role               |
+| users               | Akun pengguna dengan role (superadmin/admin/user) |
+| role_permissions    | Matriks hak akses per role (diatur superadmin) |
 | change_requests     | Data permohonan perubahan 4M            |
 | change_photos       | Foto before/after per change request    |
 | change_attachments  | File lampiran lainnya                   |

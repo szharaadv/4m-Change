@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 
 $name = trim($_POST['name'] ?? '');
 $username = trim($_POST['username'] ?? '');
@@ -21,7 +21,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit;
 }
 
-if (!in_array($role, ['admin', 'manager', 'qc'], true)) {
+if (!in_array($role, ['admin', 'user'], true)) {
     header('Location: create.php?error=' . urlencode('Invalid role.'));
     exit;
 }

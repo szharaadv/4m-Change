@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['admin','manager']);
+requirePermission('changes.edit');
 verifyCsrf();
 
 $id = (int)($_POST['id'] ?? 0);
