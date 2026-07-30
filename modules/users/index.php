@@ -2,17 +2,16 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
 $users = $pdo->query("SELECT * FROM users ORDER BY role ASC, name ASC")->fetchAll();
 
 $roleBadge = [
-    'admin' => 'badge-manager',
-    'manager'    => 'badge-submitted',
-    'qc'         => 'badge-qc',
-    'admin'      => 'badge-draft',
+    'superadmin' => 'badge-manager',
+    'admin'      => 'badge-submitted',
+    'user'       => 'badge-draft',
 ];
 
 ?>

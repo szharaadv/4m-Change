@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireLogin();
+requirePermission('changes.view');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -106,7 +106,7 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
         <span class="badge text-bg-<?= workflowBadgeClass($data['workflow_status']) ?>" style="font-size:13px;padding:6px 12px">
             <?= e($data['workflow_status']) ?>
         </span>
-        <?php if (in_array($role,['admin','manager'],true) && $data['workflow_status']==='Rejected'): ?>
+        <?php if (userCan('changes.edit') && $data['workflow_status']==='Rejected'): ?>
         <a href="edit.php?id=<?= $data['id'] ?>" class="btn btn-outline-warning btn-sm">Edit & Resubmit</a>
         <?php endif; ?>
         <a href="export_pdf.php?id=<?= $data['id'] ?>" class="btn btn-sm" target="_blank"

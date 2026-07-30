@@ -3,7 +3,7 @@ require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/audit.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 
 $id = (int) ($_POST['id'] ?? 0);
 
@@ -26,10 +26,10 @@ if (!$u) {
     exit;
 }
 
-if ($u['role'] === 'admin') {
-    $count = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+if ($u['role'] === 'superadmin') {
+    $count = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'superadmin'")->fetchColumn();
     if ($count <= 1) {
-        header('Location: index.php?error=' . urlencode('Cannot delete the last remaining admin.'));
+        header('Location: index.php?error=' . urlencode('Cannot delete the last remaining superadmin.'));
         exit;
     }
 }

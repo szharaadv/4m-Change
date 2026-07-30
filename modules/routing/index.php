@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['superadmin']);
+requirePermission('routing.manage');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -18,8 +18,12 @@ $departments = [
     'Picking Yard',
 ];
 
-$managers = $pdo->query("SELECT id, name FROM users WHERE role = 'manager' AND is_active = 1 ORDER BY name ASC")->fetchAll();
-$qcUsers  = $pdo->query("SELECT id, name FROM users WHERE role = 'qc' AND is_active = 1 ORDER BY name ASC")->fetchAll();
+// Any active non-superadmin user can be routed as an approver.
+// Whether they can actually approve is enforced by the role
+// permissions (changes.approve_manager / changes.approve_qc).
+$candidates = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','user') AND is_active = 1 ORDER BY name ASC")->fetchAll();
+$managers = $candidates;
+$qcUsers  = $candidates;
 
 // Load existing routing
 $deptMgrs = [];

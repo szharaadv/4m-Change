@@ -31,7 +31,10 @@ $userId = currentUserId();
 $isManagerStep = false;
 $isQcStep      = false;
 
-if ($role === 'manager' && $cr['workflow_status'] === 'Submitted') {
+// The manager/QC step is decided by the approve permission plus the
+// user being the routed approver for the submitter's department —
+// not by the role name.
+if ($cr['workflow_status'] === 'Submitted' && userCan('changes.approve_manager', $pdo)) {
     $chkStmt = $pdo->prepare("
         SELECT 1 FROM users u
         JOIN department_managers dm ON dm.department = u.department AND dm.manager_id = ?
@@ -41,7 +44,7 @@ if ($role === 'manager' && $cr['workflow_status'] === 'Submitted') {
     $isManagerStep = (bool)$chkStmt->fetch();
 }
 
-if ($role === 'qc' && $cr['workflow_status'] === 'Manager Approved') {
+if ($cr['workflow_status'] === 'Manager Approved' && userCan('changes.approve_qc', $pdo)) {
     $chkStmt = $pdo->prepare("
         SELECT 1 FROM users u
         JOIN department_qc dq ON dq.department = u.department AND dq.qc_id = ?
@@ -113,8 +116,13 @@ try {
 
             $qcUsers = getDeptQc($pdo, $dept);
             if (empty($qcUsers)) {
-                // Fallback: send to all QC
-                $qcUsers = $pdo->query("SELECT name, email FROM users WHERE role='qc' AND is_active=1 AND email != ''")->fetchAll();
+                // Fallback: notify everyone assigned as a QC approver in any department.
+                $qcUsers = $pdo->query("
+                    SELECT DISTINCT u.name, u.email
+                    FROM users u
+                    JOIN department_qc dq ON dq.qc_id = u.id
+                    WHERE u.is_active = 1 AND u.email IS NOT NULL AND u.email != ''
+                ")->fetchAll();
             }
 
             $infoTable = mailInfoTable([

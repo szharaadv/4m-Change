@@ -2,8 +2,9 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['admin', 'manager', 'qc']);
-$is_manager = in_array(currentUserRole(), ['manager', 'qc']);
+requirePermission('changes.create');
+// Show the "Approval Info" block to users who can act as approvers.
+$is_manager = canApproveAny();
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 

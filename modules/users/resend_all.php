@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
 require_once '../../helpers/mailer.php';
 require_once '../../helpers/audit.php';
-requireRole(['superadmin']);
+requirePermission('users.manage');
 
 $stmt = $pdo->query("SELECT * FROM users WHERE is_active = 0 AND email != '' AND email IS NOT NULL");
 $pendingUsers = $stmt->fetchAll();

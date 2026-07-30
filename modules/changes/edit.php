@@ -2,7 +2,7 @@
 require_once '../../config/database.php';
 require_once '../../helpers/auth.php';
 require_once '../../helpers/common.php';
-requireRole(['admin','manager']);
+requirePermission('changes.edit');
 include '../../templates/header.php';
 include '../../templates/navbar.php';
 
@@ -17,7 +17,7 @@ if ($data['workflow_status'] !== 'Rejected') {
     exit;
 }
 
-$users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','qc_prod') ORDER BY name ASC")->fetchAll();
+$users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','user') AND is_active = 1 ORDER BY name ASC")->fetchAll();
 ?>
 
 <div class="page-header">

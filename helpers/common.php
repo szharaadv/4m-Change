@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/permissions.php';
+
 function e($value): string
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -92,9 +94,16 @@ function judgeBadgeClass(string $judge): string
     };
 }
 
+// Whether the current user may approve a request at its current step.
+// Approval is gated by BOTH a configurable permission AND membership
+// in the department routing table for the request's step — the role
+// name itself no longer decides this.
 function canApprove(string $role, string $workflowStatus, PDO $pdo = null, int $userId = 0, int $changeId = 0): bool
 {
-    if ($role === 'manager' && $workflowStatus === 'Submitted') {
+    if ($workflowStatus === 'Submitted') {
+        if (!userCan('changes.approve_manager', $pdo)) {
+            return false;
+        }
         if ($pdo && $userId && $changeId) {
             $stmt = $pdo->prepare("
                 SELECT 1 FROM change_requests cr
@@ -108,7 +117,10 @@ function canApprove(string $role, string $workflowStatus, PDO $pdo = null, int $
         }
         return false;
     }
-    if ($role === 'qc' && $workflowStatus === 'Manager Approved') {
+    if ($workflowStatus === 'Manager Approved') {
+        if (!userCan('changes.approve_qc', $pdo)) {
+            return false;
+        }
         if ($pdo && $userId && $changeId) {
             $stmt = $pdo->prepare("
                 SELECT 1 FROM change_requests cr
@@ -145,9 +157,14 @@ function stepLabel(string $step): string
     };
 }
 
+// Count of requests currently awaiting THIS user's approval, across
+// both steps. A step only counts when the user both holds the step's
+// approve permission and is the routed approver for the request.
 function getNeedCount(PDO $pdo, string $role, int $userId): int
 {
-    if ($role === 'manager') {
+    $count = 0;
+
+    if (userCan('changes.approve_manager', $pdo)) {
         $stmt = $pdo->prepare("
             SELECT COUNT(DISTINCT cr.id)
             FROM change_requests cr
@@ -156,9 +173,10 @@ function getNeedCount(PDO $pdo, string $role, int $userId): int
             WHERE cr.workflow_status = 'Submitted'
         ");
         $stmt->execute([$userId]);
-        return (int)$stmt->fetchColumn();
+        $count += (int)$stmt->fetchColumn();
     }
-    if ($role === 'qc') {
+
+    if (userCan('changes.approve_qc', $pdo)) {
         $stmt = $pdo->prepare("
             SELECT COUNT(DISTINCT cr.id)
             FROM change_requests cr
@@ -167,14 +185,19 @@ function getNeedCount(PDO $pdo, string $role, int $userId): int
             WHERE cr.workflow_status = 'Manager Approved'
         ");
         $stmt->execute([$userId]);
-        return (int)$stmt->fetchColumn();
+        $count += (int)$stmt->fetchColumn();
     }
-    return 0;
+
+    return $count;
 }
 
+// Requests awaiting THIS user's approval, across both steps, for the
+// dashboard popup. Same permission + routing gating as getNeedCount().
 function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 10): array
 {
-    if ($role === 'manager') {
+    $items = [];
+
+    if (userCan('changes.approve_manager', $pdo)) {
         $stmt = $pdo->prepare("
             SELECT DISTINCT cr.id, cr.change_no, cr.category_4m, cr.part_name, cr.created_at, u.name AS submitter_name
             FROM change_requests cr
@@ -185,9 +208,10 @@ function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 1
             LIMIT $limit
         ");
         $stmt->execute([$userId]);
-        return $stmt->fetchAll();
+        $items = array_merge($items, $stmt->fetchAll());
     }
-    if ($role === 'qc') {
+
+    if (userCan('changes.approve_qc', $pdo)) {
         $stmt = $pdo->prepare("
             SELECT DISTINCT cr.id, cr.change_no, cr.category_4m, cr.part_name, cr.created_at, u.name AS submitter_name
             FROM change_requests cr
@@ -198,9 +222,10 @@ function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 1
             LIMIT $limit
         ");
         $stmt->execute([$userId]);
-        return $stmt->fetchAll();
+        $items = array_merge($items, $stmt->fetchAll());
     }
-    return [];
+
+    return $items;
 }
 
 function getDeptManagers(PDO $pdo, string $department): array

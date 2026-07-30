@@ -1,0 +1,1184 @@
+diff --git a/README.md b/README.md
+index 0e0579f..e4c78eb 100755
+--- a/README.md
++++ b/README.md
+@@ -67,6 +67,12 @@ Atau import langsung:
+ 
+ Database `db_4m_change` akan dibuat otomatis beserta semua tabel dan data demo.
+ 
++> **Upgrade dari install lama?** Jangan jalankan `database.sql` ulang.
++> Jalankan `migrations/migration_002_three_roles_and_permissions.sql` untuk
++> menggabungkan role lama (manager/qc/qc_prod) menjadi `user`, membuat tabel
++> `role_permissions`, dan mengisi permission default. Pastikan minimal satu
++> akun ber-role `superadmin`.
++
+ ---
+ 
+ ### 3. Konfigurasi Database (jika perlu)
+@@ -87,14 +93,31 @@ Buka browser → **http://localhost/4m-change**
+ 
+ ---
+ 
++## Peran (Roles)
++
++Sistem memakai **3 role**:
++
++| Role         | Keterangan                                                                 |
++|--------------|-----------------------------------------------------------------------------|
++| `superadmin` | Akses penuh **selalu**. Satu-satunya role yang bisa mengatur hak akses role lain (menu **Roles**). |
++| `admin`      | Hak aksesnya diatur oleh superadmin (default: penuh operasional + kelola user/routing/audit). |
++| `user`       | Hak aksesnya diatur oleh superadmin (default: buat/edit/approve/export change request). |
++
++Superadmin membuka menu **Roles** untuk memberi/mencabut permission per role
++(lihat, buat, edit, approve manager, approve QC, export, kelola user, kelola
++routing, lihat audit log). Superadmin selalu punya semua permission dan
++tidak bisa dinonaktifkan.
++
++Siapa yang melakukan approval tahap Manager vs QC ditentukan oleh **Routing
++per departemen** + permission approve — bukan lagi oleh nama role.
++
+ ## Akun Demo
+ 
+-| Username | Password | Role        | Hak Akses                          |
+-|----------|----------|-------------|-------------------------------------|
+-| admin    | admin123 | Admin       | Full akses semua fitur              |
+-| manager  | admin123 | Manager     | Approval tahap 1 (Submitted)        |
+-| qc_prod  | admin123 | QC Prod     | Buat & edit change request          |
+-| qc       | admin123 | QC          | Approval tahap 2 & 3                |
++| Username   | Password | Role        |
++|------------|----------|-------------|
++| superadmin | admin123 | superadmin  |
++| admin      | admin123 | admin       |
++| user       | admin123 | user        |
+ 
+ ---
+ 
+@@ -154,7 +177,8 @@ Draft → Submitted → Manager Approved → QC Approved → Closed
+ 
+ | Tabel               | Keterangan                              |
+ |---------------------|-----------------------------------------|
+-| users               | Akun pengguna dengan role               |
++| users               | Akun pengguna dengan role (superadmin/admin/user) |
++| role_permissions    | Matriks hak akses per role (diatur superadmin) |
+ | change_requests     | Data permohonan perubahan 4M            |
+ | change_photos       | Foto before/after per change request    |
+ | change_attachments  | File lampiran lainnya                   |
+diff --git a/database.sql b/database.sql
+index dcf2b01..eba6ca7 100755
+--- a/database.sql
++++ b/database.sql
+@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `users` (
+   `email`            VARCHAR(100) NULL,
+   `username`         VARCHAR(50)  NOT NULL,
+   `password`         VARCHAR(255) NOT NULL,
+-  `role`             ENUM('superadmin','admin','qc_prod','manager','qc') NOT NULL DEFAULT 'admin',
++  `role`             ENUM('superadmin','admin','user') NOT NULL DEFAULT 'user',
+   `created_at`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   `updated_at`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+   `password_token`   VARCHAR(100) NULL,
+@@ -150,6 +150,20 @@ CREATE TABLE IF NOT EXISTS `department_qc` (
+   UNIQUE KEY `unique_dept_qc` (`department`,`qc_id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+ 
++-- ============================================================
++-- TABLE: ROLE PERMISSIONS (configurable RBAC matrix)
++-- One row per GRANTED (role, permission). The superadmin role
++-- is never stored here — it always has every permission.
++-- ============================================================
++CREATE TABLE IF NOT EXISTS `role_permissions` (
++  `id`         INT NOT NULL AUTO_INCREMENT,
++  `role`       VARCHAR(50)  NOT NULL,
++  `permission` VARCHAR(100) NOT NULL,
++  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  PRIMARY KEY (`id`),
++  UNIQUE KEY `uq_role_permission` (`role`, `permission`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
++
+ -- ============================================================
+ -- TABLE: AUDIT LOG
+ -- ============================================================
+@@ -177,12 +191,34 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
+ -- accounts below use the password: admin123
+ -- ============================================================
+ INSERT INTO `users` (`name`, `username`, `email`, `password`, `role`, `is_active`) VALUES
+-  ('Administrator', 'admin',   'admin@example.com',   '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'superadmin', 1),
+-  ('Manager Demo',  'manager', 'manager@example.com', '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'manager',    1),
+-  ('QC Prod Demo',  'qc_prod', 'qcprod@example.com',  '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'qc_prod',    1),
+-  ('QC Demo',       'qc',      'qc@example.com',      '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'qc',         1);
++  ('Super Admin',  'superadmin', 'superadmin@example.com', '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'superadmin', 1),
++  ('Admin Demo',   'admin',      'admin@example.com',      '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'admin',      1),
++  ('User Demo',    'user',       'user@example.com',       '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'user',       1);
++
++-- ============================================================
++-- SEED: DEFAULT ROLE PERMISSIONS
++-- admin = full operational + system screens.
++-- user  = operational only. The superadmin (not listed) always
++-- has every permission and manages this matrix in the app.
++-- ============================================================
++INSERT INTO `role_permissions` (`role`, `permission`) VALUES
++  ('admin', 'changes.view'),
++  ('admin', 'changes.create'),
++  ('admin', 'changes.edit'),
++  ('admin', 'changes.approve_manager'),
++  ('admin', 'changes.approve_qc'),
++  ('admin', 'changes.export'),
++  ('admin', 'users.manage'),
++  ('admin', 'routing.manage'),
++  ('admin', 'audit.view'),
++  ('user',  'changes.view'),
++  ('user',  'changes.create'),
++  ('user',  'changes.edit'),
++  ('user',  'changes.approve_manager'),
++  ('user',  'changes.approve_qc'),
++  ('user',  'changes.export');
+ 
+ -- ============================================================
+ -- DONE — no demo change-request data seeded on fresh installs.
+--- Log in as 'admin' and use the app to create real records.
++-- Log in as 'superadmin' (password: admin123) to manage roles.
+ -- ============================================================
+diff --git a/helpers/common.php b/helpers/common.php
+index a00ad70..1afcbdd 100755
+--- a/helpers/common.php
++++ b/helpers/common.php
+@@ -1,4 +1,6 @@
+ <?php
++require_once __DIR__ . '/permissions.php';
++
+ function e($value): string
+ {
+     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+@@ -92,9 +94,16 @@ function judgeBadgeClass(string $judge): string
+     };
+ }
+ 
++// Whether the current user may approve a request at its current step.
++// Approval is gated by BOTH a configurable permission AND membership
++// in the department routing table for the request's step — the role
++// name itself no longer decides this.
+ function canApprove(string $role, string $workflowStatus, PDO $pdo = null, int $userId = 0, int $changeId = 0): bool
+ {
+-    if ($role === 'manager' && $workflowStatus === 'Submitted') {
++    if ($workflowStatus === 'Submitted') {
++        if (!userCan('changes.approve_manager', $pdo)) {
++            return false;
++        }
+         if ($pdo && $userId && $changeId) {
+             $stmt = $pdo->prepare("
+                 SELECT 1 FROM change_requests cr
+@@ -108,7 +117,10 @@ function canApprove(string $role, string $workflowStatus, PDO $pdo = null, int $
+         }
+         return false;
+     }
+-    if ($role === 'qc' && $workflowStatus === 'Manager Approved') {
++    if ($workflowStatus === 'Manager Approved') {
++        if (!userCan('changes.approve_qc', $pdo)) {
++            return false;
++        }
+         if ($pdo && $userId && $changeId) {
+             $stmt = $pdo->prepare("
+                 SELECT 1 FROM change_requests cr
+@@ -145,9 +157,14 @@ function stepLabel(string $step): string
+     };
+ }
+ 
++// Count of requests currently awaiting THIS user's approval, across
++// both steps. A step only counts when the user both holds the step's
++// approve permission and is the routed approver for the request.
+ function getNeedCount(PDO $pdo, string $role, int $userId): int
+ {
+-    if ($role === 'manager') {
++    $count = 0;
++
++    if (userCan('changes.approve_manager', $pdo)) {
+         $stmt = $pdo->prepare("
+             SELECT COUNT(DISTINCT cr.id)
+             FROM change_requests cr
+@@ -156,9 +173,10 @@ function getNeedCount(PDO $pdo, string $role, int $userId): int
+             WHERE cr.workflow_status = 'Submitted'
+         ");
+         $stmt->execute([$userId]);
+-        return (int)$stmt->fetchColumn();
++        $count += (int)$stmt->fetchColumn();
+     }
+-    if ($role === 'qc') {
++
++    if (userCan('changes.approve_qc', $pdo)) {
+         $stmt = $pdo->prepare("
+             SELECT COUNT(DISTINCT cr.id)
+             FROM change_requests cr
+@@ -167,14 +185,19 @@ function getNeedCount(PDO $pdo, string $role, int $userId): int
+             WHERE cr.workflow_status = 'Manager Approved'
+         ");
+         $stmt->execute([$userId]);
+-        return (int)$stmt->fetchColumn();
++        $count += (int)$stmt->fetchColumn();
+     }
+-    return 0;
++
++    return $count;
+ }
+ 
++// Requests awaiting THIS user's approval, across both steps, for the
++// dashboard popup. Same permission + routing gating as getNeedCount().
+ function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 10): array
+ {
+-    if ($role === 'manager') {
++    $items = [];
++
++    if (userCan('changes.approve_manager', $pdo)) {
+         $stmt = $pdo->prepare("
+             SELECT DISTINCT cr.id, cr.change_no, cr.category_4m, cr.part_name, cr.created_at, u.name AS submitter_name
+             FROM change_requests cr
+@@ -185,9 +208,10 @@ function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 1
+             LIMIT $limit
+         ");
+         $stmt->execute([$userId]);
+-        return $stmt->fetchAll();
++        $items = array_merge($items, $stmt->fetchAll());
+     }
+-    if ($role === 'qc') {
++
++    if (userCan('changes.approve_qc', $pdo)) {
+         $stmt = $pdo->prepare("
+             SELECT DISTINCT cr.id, cr.change_no, cr.category_4m, cr.part_name, cr.created_at, u.name AS submitter_name
+             FROM change_requests cr
+@@ -198,9 +222,10 @@ function getPendingApprovals(PDO $pdo, string $role, int $userId, int $limit = 1
+             LIMIT $limit
+         ");
+         $stmt->execute([$userId]);
+-        return $stmt->fetchAll();
++        $items = array_merge($items, $stmt->fetchAll());
+     }
+-    return [];
++
++    return $items;
+ }
+ 
+ function getDeptManagers(PDO $pdo, string $department): array
+diff --git a/helpers/permissions.php b/helpers/permissions.php
+new file mode 100644
+index 0000000..cddce3a
+--- /dev/null
++++ b/helpers/permissions.php
+@@ -0,0 +1,128 @@
++<?php
++// ============================================================
++// Role-Based Access Control (RBAC)
++// ------------------------------------------------------------
++// Three roles exist in the system:
++//   - superadmin : full access to everything, ALWAYS. Its
++//                  permissions cannot be edited or revoked and
++//                  it is the only role allowed to manage the
++//                  permissions of the other roles.
++//   - admin      : configurable by the superadmin.
++//   - user       : configurable by the superadmin.
++//
++// A permission is granted to a role when a matching row exists
++// in the `role_permissions` table. Absence of a row = denied.
++// The superadmin bypasses this table entirely.
++// ============================================================
++
++require_once __DIR__ . '/auth.php';
++
++// The catalog of permissions the superadmin can grant/revoke.
++// key => human readable label shown in the management UI.
++const PERMISSIONS = [
++    'changes.view'            => 'View changes & dashboard',
++    'changes.create'          => 'Create change request',
++    'changes.edit'            => 'Edit / resubmit change',
++    'changes.approve_manager' => 'Approve — Manager step',
++    'changes.approve_qc'      => 'Approve — QC step',
++    'changes.export'          => 'Export data (CSV / PDF)',
++    'users.manage'            => 'Manage users',
++    'routing.manage'          => 'Manage approval routing',
++    'audit.view'              => 'View audit log',
++];
++
++// Roles whose permissions the superadmin can configure.
++// 'superadmin' is intentionally excluded — it always has everything.
++const MANAGED_ROLES = ['admin', 'user'];
++
++const ROLE_SUPERADMIN = 'superadmin';
++
++/**
++ * Load the full role => [permission, ...] map from the database.
++ * Cached for the duration of the request.
++ */
++function loadRolePermissions(PDO $pdo): array
++{
++    static $cache = null;
++    if ($cache !== null) {
++        return $cache;
++    }
++
++    $cache = [];
++    foreach (MANAGED_ROLES as $r) {
++        $cache[$r] = [];
++    }
++
++    try {
++        $rows = $pdo->query("SELECT role, permission FROM role_permissions")->fetchAll();
++        foreach ($rows as $row) {
++            $cache[$row['role']][] = $row['permission'];
++        }
++    } catch (Throwable $e) {
++        // Table missing (migration not yet run) — fail closed for
++        // managed roles; superadmin still bypasses via userCan().
++        error_log('[permissions] ' . $e->getMessage());
++    }
++
++    return $cache;
++}
++
++/**
++ * Resolve the PDO handle: explicit argument wins, otherwise fall
++ * back to the global $pdo established in config/database.php.
++ */
++function permissionsPdo(?PDO $pdo = null): ?PDO
++{
++    if ($pdo instanceof PDO) {
++        return $pdo;
++    }
++    return $GLOBALS['pdo'] ?? null;
++}
++
++/**
++ * Does the currently logged-in user have the given permission?
++ */
++function userCan(string $permission, ?PDO $pdo = null): bool
++{
++    $role = currentUserRole();
++    if ($role === null) {
++        return false;
++    }
++    // Superadmin can do everything, always.
++    if ($role === ROLE_SUPERADMIN) {
++        return true;
++    }
++
++    $pdo = permissionsPdo($pdo);
++    if (!$pdo) {
++        return false;
++    }
++
++    $map = loadRolePermissions($pdo);
++    return in_array($permission, $map[$role] ?? [], true);
++}
++
++/**
++ * Guard a page: require login + a specific permission.
++ */
++function requirePermission(string $permission, ?PDO $pdo = null): void
++{
++    requireLogin();
++    if (!userCan($permission, $pdo)) {
++        http_response_code(403);
++        die('<div style="font-family:sans-serif;padding:40px;text-align:center">
++            <h2>403 — Access Denied</h2>
++            <p>You do not have permission to access this page.</p>
++            <a href="' . navLink('modules/dashboard/index.php') . '">Back to Dashboard</a>
++        </div>');
++    }
++}
++
++/**
++ * Can this user approve at either workflow step? Handy for
++ * showing/hiding approver-only UI (badges, tabs, stat cards).
++ */
++function canApproveAny(?PDO $pdo = null): bool
++{
++    return userCan('changes.approve_manager', $pdo) || userCan('changes.approve_qc', $pdo);
++}
+diff --git a/migrations/migration_002_three_roles_and_permissions.sql b/migrations/migration_002_three_roles_and_permissions.sql
+new file mode 100644
+index 0000000..55ca0d6
+--- /dev/null
++++ b/migrations/migration_002_three_roles_and_permissions.sql
+@@ -0,0 +1,83 @@
++-- ============================================================
++-- 4M Change Management System — Migration 002
++-- Consolidate roles to THREE (superadmin, admin, user) and add
++-- a configurable permission matrix the superadmin can control.
++--
++-- Generated: 2026-07-30
++--
++-- HOW TO RUN
++--   phpMyAdmin : open db_4m_change > SQL tab > paste this file > Go.
++--   CLI        : mysql -u <user> -p db_4m_change < migration_002_three_roles_and_permissions.sql
++--
++-- SAFE TO RE-RUN: role_permissions uses INSERT IGNORE, the role
++-- back-fill only touches legacy roles, and the ENUM change is
++-- idempotent.
++--
++-- ALWAYS BACK UP THE DATABASE BEFORE RUNNING ON A LIVE SERVER:
++--   mysqldump -u <user> -p db_4m_change > backup_before_migration_002.sql
++-- ============================================================
++
++USE `db_4m_change`;
++
++-- ------------------------------------------------------------
++-- 1. Fold the legacy approval roles into the new 'user' role.
++--    manager / qc / qc_prod all become plain 'user'. Who does
++--    the Manager vs QC approval step is now driven purely by the
++--    department routing tables + the configurable permission
++--    matrix, not by the role name.
++--    (Temporarily widen the ENUM so the UPDATE is always valid.)
++-- ------------------------------------------------------------
++ALTER TABLE `users`
++  MODIFY COLUMN `role`
++  ENUM('superadmin','admin','user','qc_prod','manager','qc') NOT NULL DEFAULT 'user';
++
++UPDATE `users` SET `role` = 'user'
++  WHERE `role` IN ('manager', 'qc', 'qc_prod');
++
++-- Now lock the ENUM down to the final three roles.
++ALTER TABLE `users`
++  MODIFY COLUMN `role`
++  ENUM('superadmin','admin','user') NOT NULL DEFAULT 'user';
++
++-- ------------------------------------------------------------
++-- 2. Permission matrix table.
++--    One row per (role, permission) that is GRANTED. Absence of
++--    a row means the role does NOT have that permission.
++--    The superadmin is never stored here — it bypasses the table.
++-- ------------------------------------------------------------
++CREATE TABLE IF NOT EXISTS `role_permissions` (
++  `id`         INT NOT NULL AUTO_INCREMENT,
++  `role`       VARCHAR(50)  NOT NULL,
++  `permission` VARCHAR(100) NOT NULL,
++  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
++  PRIMARY KEY (`id`),
++  UNIQUE KEY `uq_role_permission` (`role`, `permission`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
++
++-- ------------------------------------------------------------
++-- 3. Seed sensible default permissions (safe to re-run).
++--    admin : full operational + system screens.
++--    user  : operational only (create / edit / approve / export).
++--    The superadmin can change all of this in Settings > Roles.
++-- ------------------------------------------------------------
++INSERT IGNORE INTO `role_permissions` (`role`, `permission`) VALUES
++  ('admin', 'changes.view'),
++  ('admin', 'changes.create'),
++  ('admin', 'changes.edit'),
++  ('admin', 'changes.approve_manager'),
++  ('admin', 'changes.approve_qc'),
++  ('admin', 'changes.export'),
++  ('admin', 'users.manage'),
++  ('admin', 'routing.manage'),
++  ('admin', 'audit.view'),
++  ('user',  'changes.view'),
++  ('user',  'changes.create'),
++  ('user',  'changes.edit'),
++  ('user',  'changes.approve_manager'),
++  ('user',  'changes.approve_qc'),
++  ('user',  'changes.export');
++
++-- ============================================================
++-- DONE. Make sure at least one account has role 'superadmin':
++--   UPDATE `users` SET `role` = 'superadmin' WHERE `username` = 'admin';
++-- ============================================================
+diff --git a/modules/audit/index.php b/modules/audit/index.php
+index e9accb6..1a39d2d 100755
+--- a/modules/audit/index.php
++++ b/modules/audit/index.php
+@@ -3,7 +3,7 @@ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['superadmin']);
++requirePermission('audit.view');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+diff --git a/modules/changes/create.php b/modules/changes/create.php
+index 76436ae..3df5fea 100755
+--- a/modules/changes/create.php
++++ b/modules/changes/create.php
+@@ -2,8 +2,9 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['admin', 'manager', 'qc']);
+-$is_manager = in_array(currentUserRole(), ['manager', 'qc']);
++requirePermission('changes.create');
++// Show the "Approval Info" block to users who can act as approvers.
++$is_manager = canApproveAny();
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+diff --git a/modules/changes/detail.php b/modules/changes/detail.php
+index cb4c4ff..85bdce7 100755
+--- a/modules/changes/detail.php
++++ b/modules/changes/detail.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireLogin();
++requirePermission('changes.view');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+@@ -106,7 +106,7 @@ function stepCircle(int $cur, int $order, ?array $appr): string {
+         <span class="badge text-bg-<?= workflowBadgeClass($data['workflow_status']) ?>" style="font-size:13px;padding:6px 12px">
+             <?= e($data['workflow_status']) ?>
+         </span>
+-        <?php if (in_array($role,['admin','manager'],true) && $data['workflow_status']==='Rejected'): ?>
++        <?php if (userCan('changes.edit') && $data['workflow_status']==='Rejected'): ?>
+         <a href="edit.php?id=<?= $data['id'] ?>" class="btn btn-outline-warning btn-sm">Edit & Resubmit</a>
+         <?php endif; ?>
+         <a href="export_pdf.php?id=<?= $data['id'] ?>" class="btn btn-sm" target="_blank"
+diff --git a/modules/changes/edit.php b/modules/changes/edit.php
+index e565b34..14c58f6 100755
+--- a/modules/changes/edit.php
++++ b/modules/changes/edit.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['admin','manager']);
++requirePermission('changes.edit');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+@@ -17,7 +17,7 @@ if ($data['workflow_status'] !== 'Rejected') {
+     exit;
+ }
+ 
+-$users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','qc_prod') ORDER BY name ASC")->fetchAll();
++$users = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','user') AND is_active = 1 ORDER BY name ASC")->fetchAll();
+ ?>
+ 
+ <div class="page-header">
+diff --git a/modules/changes/export_csv.php b/modules/changes/export_csv.php
+index e8d103f..211beae 100755
+--- a/modules/changes/export_csv.php
++++ b/modules/changes/export_csv.php
+@@ -3,8 +3,8 @@ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/audit.php';
++requirePermission('changes.export');
+ writeAuditLog($pdo, 'EXPORT_CSV', 'Export CSV change requests');
+-requireLogin();
+ 
+ $role = currentUserRole();
+ $userId = currentUserId();
+@@ -27,10 +27,13 @@ if (!empty($_GET['workflow_status'])) {
+ }
+ 
+ if ($tab === 'need_approval') {
+-    if (in_array($role, ['manager', 'admin'], true)) {
+-        $where[] = "cr.workflow_status = 'Submitted'";
+-    } elseif ($role === 'qc') {
+-        $where[] = "cr.workflow_status IN ('Manager Approved','QC Approved')";
++    $approvalStatuses = [];
++    if (userCan('changes.approve_manager')) { $approvalStatuses[] = 'Submitted'; }
++    if (userCan('changes.approve_qc'))      { $approvalStatuses[] = 'Manager Approved'; $approvalStatuses[] = 'QC Approved'; }
++    if ($approvalStatuses) {
++        $ph = implode(',', array_fill(0, count($approvalStatuses), '?'));
++        $where[]  = "cr.workflow_status IN ($ph)";
++        $params   = array_merge($params, $approvalStatuses);
+     } else {
+         $where[] = '1=0';
+     }
+diff --git a/modules/changes/export_pdf.php b/modules/changes/export_pdf.php
+index 9119699..c8e230b 100755
+--- a/modules/changes/export_pdf.php
++++ b/modules/changes/export_pdf.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireLogin();
++requirePermission('changes.export');
+ // TEMPORARY DEBUG — remove when done
+ ini_set('display_errors', 1);
+ error_reporting(E_ALL);
+diff --git a/modules/changes/index.php b/modules/changes/index.php
+index 08979e0..aeafa4a 100755
+--- a/modules/changes/index.php
++++ b/modules/changes/index.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireLogin();
++requirePermission('changes.view');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+@@ -20,9 +20,16 @@ if (!empty($_GET['workflow_status'])) { $where[] = 'cr.workflow_status = ?'; $pa
+ 
+ // Tab filters
+ if ($tab === 'need_approval') {
+-    if (in_array($role, ['manager','admin'], true)) { $where[] = "cr.workflow_status = 'Submitted'"; }
+-    elseif ($role === 'qc') { $where[] = "cr.workflow_status IN ('Manager Approved','QC Approved')"; }
+-    else { $where[] = '1=0'; }
++    $approvalStatuses = [];
++    if (userCan('changes.approve_manager')) { $approvalStatuses[] = 'Submitted'; }
++    if (userCan('changes.approve_qc'))      { $approvalStatuses[] = 'Manager Approved'; $approvalStatuses[] = 'QC Approved'; }
++    if ($approvalStatuses) {
++        $ph = implode(',', array_fill(0, count($approvalStatuses), '?'));
++        $where[]  = "cr.workflow_status IN ($ph)";
++        $params   = array_merge($params, $approvalStatuses);
++    } else {
++        $where[] = '1=0';
++    }
+ }
+ 
+ $joinApproval = '';
+@@ -63,14 +70,16 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
+         <div class="page-sub">History</div>
+     </div>
+     <div class="d-flex gap-8">
++        <?php if (userCan('changes.export')): ?>
+         <a href="export_csv.php?<?= http_build_query(array_merge($_GET, ['tab' => $tab])) ?>" class="btn">Export CSV</a>
+-        <?php if (in_array($role, ['admin','manager','qc','qc_prod'], true)): ?>
++        <?php endif; ?>
++        <?php if (userCan('changes.create')): ?>
+         <a href="create.php" class="btn btn-primary">+ New Change</a>
+         <?php endif; ?>
+     </div>
+ </div>
+ 
+-<?php $isApprover = in_array($role, ['manager','qc'], true); ?>
++<?php $isApprover = canApproveAny(); ?>
+ <div class="stat-grid">
+     <div class="stat-card"><div class="stat-label">Total Change</div><div class="stat-val"><?= $totalChange ?></div></div>
+     <?php if ($isApprover): ?>
+@@ -168,7 +177,7 @@ $statusMap = ['Draft'=>'draft','Submitted'=>'submitted','Manager Approved'=>'man
+                 <td class="text-muted" style="font-size:12px"><?= date('d M Y', strtotime($row['created_at'])) ?></td>
+                 <td onclick="event.stopPropagation()">
+                     <a href="detail.php?id=<?= $row['id'] ?>" class="btn btn-sm">Details</a>
+-                    <?php if (in_array($role, ['admin','qc_prod'], true) && $row['workflow_status'] === 'Rejected'): ?>
++                    <?php if (userCan('changes.edit') && $row['workflow_status'] === 'Rejected'): ?>
+                     <a href="edit.php?id=<?= $row['id'] ?>" class="btn btn-sm" style="margin-top:4px;display:block">Edit</a>
+                     <?php endif; ?>
+                 </td>
+diff --git a/modules/changes/process_approval.php b/modules/changes/process_approval.php
+index e162a7f..22203f9 100755
+--- a/modules/changes/process_approval.php
++++ b/modules/changes/process_approval.php
+@@ -31,7 +31,10 @@ $userId = currentUserId();
+ $isManagerStep = false;
+ $isQcStep      = false;
+ 
+-if ($role === 'manager' && $cr['workflow_status'] === 'Submitted') {
++// The manager/QC step is decided by the approve permission plus the
++// user being the routed approver for the submitter's department —
++// not by the role name.
++if ($cr['workflow_status'] === 'Submitted' && userCan('changes.approve_manager', $pdo)) {
+     $chkStmt = $pdo->prepare("
+         SELECT 1 FROM users u
+         JOIN department_managers dm ON dm.department = u.department AND dm.manager_id = ?
+@@ -41,7 +44,7 @@ if ($role === 'manager' && $cr['workflow_status'] === 'Submitted') {
+     $isManagerStep = (bool)$chkStmt->fetch();
+ }
+ 
+-if ($role === 'qc' && $cr['workflow_status'] === 'Manager Approved') {
++if ($cr['workflow_status'] === 'Manager Approved' && userCan('changes.approve_qc', $pdo)) {
+     $chkStmt = $pdo->prepare("
+         SELECT 1 FROM users u
+         JOIN department_qc dq ON dq.department = u.department AND dq.qc_id = ?
+@@ -113,8 +116,13 @@ try {
+ 
+             $qcUsers = getDeptQc($pdo, $dept);
+             if (empty($qcUsers)) {
+-                // Fallback: send to all QC
+-                $qcUsers = $pdo->query("SELECT name, email FROM users WHERE role='qc' AND is_active=1 AND email != ''")->fetchAll();
++                // Fallback: notify everyone assigned as a QC approver in any department.
++                $qcUsers = $pdo->query("
++                    SELECT DISTINCT u.name, u.email
++                    FROM users u
++                    JOIN department_qc dq ON dq.qc_id = u.id
++                    WHERE u.is_active = 1 AND u.email IS NOT NULL AND u.email != ''
++                ")->fetchAll();
+             }
+ 
+             $infoTable = mailInfoTable([
+diff --git a/modules/changes/store.php b/modules/changes/store.php
+index 899ab94..f3054d8 100755
+--- a/modules/changes/store.php
++++ b/modules/changes/store.php
+@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/mailer.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['admin', 'manager', 'qc']);
++requirePermission('changes.create');
+ verifyCsrf();
+ 
+ try {
+@@ -128,9 +128,15 @@ try {
+     // Route to the manager of the submitter's department
+     $mgrUsers = getDeptManagers($pdo, $submitterDept);
+ 
+-    // Fallback: if the department isn't routed yet, send to all managers
++    // Fallback: if the department isn't routed yet, notify everyone
++    // assigned as a manager approver in any department.
+     if (empty($mgrUsers)) {
+-        $mgrUsers = $pdo->query("SELECT name, email FROM users WHERE role='manager' AND is_active=1 AND email != ''")->fetchAll();
++        $mgrUsers = $pdo->query("
++            SELECT DISTINCT u.name, u.email
++            FROM users u
++            JOIN department_managers dm ON dm.manager_id = u.id
++            WHERE u.is_active = 1 AND u.email IS NOT NULL AND u.email != ''
++        ")->fetchAll();
+     }
+ 
+     $infoTable = mailInfoTable([
+diff --git a/modules/changes/update.php b/modules/changes/update.php
+index aec8b78..d15daca 100755
+--- a/modules/changes/update.php
++++ b/modules/changes/update.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['admin','manager']);
++requirePermission('changes.edit');
+ verifyCsrf();
+ 
+ $id = (int)($_POST['id'] ?? 0);
+diff --git a/modules/dashboard/index.php b/modules/dashboard/index.php
+index 9660a01..2d72dc6 100755
+--- a/modules/dashboard/index.php
++++ b/modules/dashboard/index.php
+@@ -15,7 +15,7 @@ $closedMonth  = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE wor
+ $rejected     = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status='Rejected'")->fetchColumn();
+ $needCustomer = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE confirm_customer='Need'")->fetchColumn();
+ $needCount    = getNeedCount($pdo, $role, $userId);
+-$pendingApprovals = in_array($role, ['manager','qc'], true) ? getPendingApprovals($pdo, $role, $userId) : [];
++$pendingApprovals = canApproveAny() ? getPendingApprovals($pdo, $role, $userId) : [];
+ 
+ $pipeSubmitted = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status='Submitted'")->fetchColumn();
+ $pipeMgr       = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status='Manager Approved'")->fetchColumn();
+diff --git a/modules/roles/index.php b/modules/roles/index.php
+new file mode 100644
+index 0000000..d567db9
+--- /dev/null
++++ b/modules/roles/index.php
+@@ -0,0 +1,84 @@
++<?php
++require_once '../../config/database.php';
++require_once '../../helpers/auth.php';
++require_once '../../helpers/common.php';
++require_once '../../helpers/permissions.php';
++
++// Only the superadmin may view or change the permission matrix.
++requireRole([ROLE_SUPERADMIN]);
++
++include '../../templates/header.php';
++include '../../templates/navbar.php';
++
++$map = loadRolePermissions($pdo);
++?>
++
++<div class="page-header">
++    <div>
++        <div class="page-title">Role Permissions</div>
++        <div class="page-sub">Control what each role can access. The superadmin always has full access.</div>
++    </div>
++</div>
++
++<?php if (isset($_GET['success'])): ?>
++<div class="alert alert-success">Role permissions saved successfully.</div>
++<?php endif; ?>
++<?php if (isset($_GET['error'])): ?>
++<div class="alert alert-danger"><?= e($_GET['error']) ?></div>
++<?php endif; ?>
++
++<form action="save.php" method="POST">
++    <input type="hidden" name="_csrf" value="<?= csrfToken() ?>">
++
++    <div class="table-wrap">
++        <div class="card-header">Access Matrix</div>
++        <div class="table-scroll">
++        <table class="table">
++            <thead>
++                <tr>
++                    <th style="min-width:240px">Permission</th>
++                    <th style="width:120px;text-align:center">
++                        <span class="badge badge-manager">superadmin</span>
++                    </th>
++                    <?php foreach (MANAGED_ROLES as $role): ?>
++                    <th style="width:120px;text-align:center">
++                        <span class="badge badge-submitted"><?= e($role) ?></span>
++                    </th>
++                    <?php endforeach; ?>
++                </tr>
++            </thead>
++            <tbody>
++                <?php foreach (PERMISSIONS as $permKey => $permLabel): ?>
++                <tr>
++                    <td>
++                        <div style="font-weight:500;font-size:13px"><?= e($permLabel) ?></div>
++                        <div class="mono" style="font-size:11px;color:var(--muted)"><?= e($permKey) ?></div>
++                    </td>
++                    <td style="text-align:center">
++                        <input type="checkbox" checked disabled title="Superadmin always has full access"
++                               style="width:16px;height:16px">
++                    </td>
++                    <?php foreach (MANAGED_ROLES as $role): ?>
++                    <?php $checked = in_array($permKey, $map[$role] ?? [], true); ?>
++                    <td style="text-align:center">
++                        <input type="checkbox"
++                               name="perms[<?= e($role) ?>][]"
++                               value="<?= e($permKey) ?>"
++                               <?= $checked ? 'checked' : '' ?>
++                               style="width:16px;height:16px;cursor:pointer">
++                    </td>
++                    <?php endforeach; ?>
++                </tr>
++                <?php endforeach; ?>
++            </tbody>
++        </table>
++        </div>
++    </div>
++
++    <div class="d-flex gap-8" style="justify-content:flex-end;padding:16px 0 8px">
++        <a href="<?= navLink('modules/dashboard/index.php') ?>" class="btn">Cancel</a>
++        <button type="submit" class="btn btn-primary">Save Permissions</button>
++    </div>
++</form>
++
++<?php include '../../templates/footer.php'; ?>
+diff --git a/modules/roles/save.php b/modules/roles/save.php
+new file mode 100644
+index 0000000..c25eef2
+--- /dev/null
++++ b/modules/roles/save.php
+@@ -0,0 +1,46 @@
++<?php
++require_once '../../config/database.php';
++require_once '../../helpers/auth.php';
++require_once '../../helpers/common.php';
++require_once '../../helpers/permissions.php';
++require_once '../../helpers/audit.php';
++
++requireRole([ROLE_SUPERADMIN]);
++verifyCsrf();
++
++$submitted = $_POST['perms'] ?? [];
++
++try {
++    $pdo->beginTransaction();
++
++    // Rebuild the matrix for the managed roles only. The superadmin
++    // is never stored — it always bypasses the table.
++    $insert = $pdo->prepare("INSERT IGNORE INTO role_permissions (role, permission) VALUES (?, ?)");
++
++    foreach (MANAGED_ROLES as $role) {
++        // Clear this role's current grants.
++        $del = $pdo->prepare("DELETE FROM role_permissions WHERE role = ?");
++        $del->execute([$role]);
++
++        $granted = $submitted[$role] ?? [];
++        if (!is_array($granted)) {
++            continue;
++        }
++        foreach ($granted as $perm) {
++            // Only accept permissions from the known catalog.
++            if (array_key_exists($perm, PERMISSIONS)) {
++                $insert->execute([$role, $perm]);
++            }
++        }
++    }
++
++    $pdo->commit();
++    writeAuditLog($pdo, 'ROLE_PERMISSIONS_UPDATED', 'Updated role permission matrix');
++    header('Location: index.php?success=1');
++    exit;
++
++} catch (Exception $e) {
++    if ($pdo->inTransaction()) $pdo->rollBack();
++    header('Location: index.php?error=' . urlencode($e->getMessage()));
++    exit;
++}
+diff --git a/modules/routing/index.php b/modules/routing/index.php
+index 1900c23..3d87db8 100644
+--- a/modules/routing/index.php
++++ b/modules/routing/index.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['superadmin']);
++requirePermission('routing.manage');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+@@ -18,8 +18,12 @@ $departments = [
+     'Picking Yard',
+ ];
+ 
+-$managers = $pdo->query("SELECT id, name FROM users WHERE role = 'manager' AND is_active = 1 ORDER BY name ASC")->fetchAll();
+-$qcUsers  = $pdo->query("SELECT id, name FROM users WHERE role = 'qc' AND is_active = 1 ORDER BY name ASC")->fetchAll();
++// Any active non-superadmin user can be routed as an approver.
++// Whether they can actually approve is enforced by the role
++// permissions (changes.approve_manager / changes.approve_qc).
++$candidates = $pdo->query("SELECT id, name FROM users WHERE role IN ('admin','user') AND is_active = 1 ORDER BY name ASC")->fetchAll();
++$managers = $candidates;
++$qcUsers  = $candidates;
+ 
+ // Load existing routing
+ $deptMgrs = [];
+diff --git a/modules/routing/save.php b/modules/routing/save.php
+index 81f7c16..ace4ce7 100644
+--- a/modules/routing/save.php
++++ b/modules/routing/save.php
+@@ -3,7 +3,7 @@ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['superadmin']);
++requirePermission('routing.manage');
+ verifyCsrf();
+ 
+ $departments = [
+diff --git a/modules/users/create.php b/modules/users/create.php
+index db2942c..1fcf12d 100755
+--- a/modules/users/create.php
++++ b/modules/users/create.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ ?>
+@@ -40,11 +40,10 @@ include '../../templates/navbar.php';
+                 <label class="form-label">Role <span class="required">*</span></label>
+                 <select name="role" class="form-control" required>
+                     <option value="">Select role...</option>
+-                    <option value="qc_prod">qc_prod</option>
++                    <option value="user">user</option>
+                     <option value="admin">admin</option>
+-                    <option value="manager">manager</option>
+-                    <option value="qc">qc</option>
+                 </select>
++                <div class="form-hint" style="margin-top:4px">Role access is configured by the superadmin under Roles.</div>
+             </div>
+         </div>
+     </div>
+diff --git a/modules/users/delete.php b/modules/users/delete.php
+index 59a05f7..cd7a1fa 100755
+--- a/modules/users/delete.php
++++ b/modules/users/delete.php
+@@ -3,7 +3,7 @@ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ 
+ $id = (int) ($_POST['id'] ?? 0);
+ 
+@@ -26,10 +26,10 @@ if (!$u) {
+     exit;
+ }
+ 
+-if ($u['role'] === 'admin') {
+-    $count = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
++if ($u['role'] === 'superadmin') {
++    $count = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'superadmin'")->fetchColumn();
+     if ($count <= 1) {
+-        header('Location: index.php?error=' . urlencode('Cannot delete the last remaining admin.'));
++        header('Location: index.php?error=' . urlencode('Cannot delete the last remaining superadmin.'));
+         exit;
+     }
+ }
+diff --git a/modules/users/edit.php b/modules/users/edit.php
+index 9f1a85f..523bf46 100755
+--- a/modules/users/edit.php
++++ b/modules/users/edit.php
+@@ -2,7 +2,7 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+@@ -59,12 +59,19 @@ $departments = [
+             </div>
+             <div>
+                 <label class="form-label">Role <span class="required">*</span></label>
+-                <select name="role" class="form-control" required>
+-                    <?php foreach (['admin', 'manager', 'qc', 'qc_prod'] as $r): ?>
+-                    <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
+-                    <?php endforeach; ?>
+-                </select>
+-                <div class="form-hint" style="margin-top:4px">The superadmin role cannot be changed through this form.</div>
++                <?php if ($u['role'] === 'superadmin'): ?>
++                    <input type="text" class="form-control" value="superadmin" disabled
++                           style="background:#f5f5f5;color:var(--muted)">
++                    <input type="hidden" name="role" value="superadmin">
++                    <div class="form-hint" style="margin-top:4px">The superadmin role cannot be changed through this form.</div>
++                <?php else: ?>
++                    <select name="role" class="form-control" required>
++                        <?php foreach (['admin', 'user'] as $r): ?>
++                        <option value="<?= $r ?>" <?= $u['role'] === $r ? 'selected' : '' ?>><?= $r ?></option>
++                        <?php endforeach; ?>
++                    </select>
++                    <div class="form-hint" style="margin-top:4px">Access for each role is configured under Roles.</div>
++                <?php endif; ?>
+             </div>
+             <div>
+                 <label class="form-label">Department</label>
+diff --git a/modules/users/index.php b/modules/users/index.php
+index a8a3e1d..be6431b 100755
+--- a/modules/users/index.php
++++ b/modules/users/index.php
+@@ -2,17 +2,16 @@
+ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ include '../../templates/header.php';
+ include '../../templates/navbar.php';
+ 
+ $users = $pdo->query("SELECT * FROM users ORDER BY role ASC, name ASC")->fetchAll();
+ 
+ $roleBadge = [
+-    'admin' => 'badge-manager',
+-    'manager'    => 'badge-submitted',
+-    'qc'         => 'badge-qc',
+-    'admin'      => 'badge-draft',
++    'superadmin' => 'badge-manager',
++    'admin'      => 'badge-submitted',
++    'user'       => 'badge-draft',
+ ];
+ 
+ ?>
+diff --git a/modules/users/resend_all.php b/modules/users/resend_all.php
+index c772169..d6ab748 100644
+--- a/modules/users/resend_all.php
++++ b/modules/users/resend_all.php
+@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/mailer.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ 
+ $stmt = $pdo->query("SELECT * FROM users WHERE is_active = 0 AND email != '' AND email IS NOT NULL");
+ $pendingUsers = $stmt->fetchAll();
+diff --git a/modules/users/resend_email.php b/modules/users/resend_email.php
+index 0b295f6..29cefe7 100755
+--- a/modules/users/resend_email.php
++++ b/modules/users/resend_email.php
+@@ -3,7 +3,7 @@ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/mailer.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ 
+ $id = (int) ($_POST['id'] ?? 0);
+ 
+diff --git a/modules/users/store.php b/modules/users/store.php
+index 1fed084..023fe87 100755
+--- a/modules/users/store.php
++++ b/modules/users/store.php
+@@ -4,7 +4,7 @@ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/mailer.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ 
+ $name = trim($_POST['name'] ?? '');
+ $username = trim($_POST['username'] ?? '');
+@@ -21,7 +21,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+     exit;
+ }
+ 
+-if (!in_array($role, ['admin', 'manager', 'qc'], true)) {
++if (!in_array($role, ['admin', 'user'], true)) {
+     header('Location: create.php?error=' . urlencode('Invalid role.'));
+     exit;
+ }
+diff --git a/modules/users/update.php b/modules/users/update.php
+index 149a4da..6a14d6f 100755
+--- a/modules/users/update.php
++++ b/modules/users/update.php
+@@ -3,7 +3,7 @@ require_once '../../config/database.php';
+ require_once '../../helpers/auth.php';
+ require_once '../../helpers/common.php';
+ require_once '../../helpers/audit.php';
+-requireRole(['superadmin']);
++requirePermission('users.manage');
+ 
+ $id              = (int)($_POST['id'] ?? 0);
+ $name            = trim($_POST['name'] ?? '');
+@@ -20,7 +20,7 @@ if (!$id || !$name || !$username || !$role) {
+     exit;
+ }
+ 
+-if (!in_array($role, ['superadmin', 'admin', 'manager', 'qc', 'qc_prod'], true)) {
++if (!in_array($role, ['superadmin', 'admin', 'user'], true)) {
+     header('Location: edit.php?id=' . $id . '&error=' . urlencode('Invalid role.'));
+     exit;
+ }
+diff --git a/templates/navbar.php b/templates/navbar.php
+index cb4e120..7614c94 100755
+--- a/templates/navbar.php
++++ b/templates/navbar.php
+@@ -39,7 +39,7 @@ function isActive(string $path): string
+             <?php endif; ?>
+         </a>
+ 
+-        <?php if ($user && in_array($role, ['admin', 'manager', 'qc', 'qc_prod'], true)): ?>
++        <?php if ($user && userCan('changes.create')): ?>
+         <a href="<?= navLink('modules/changes/create.php') ?>" class="nav-item <?= isActive('create') ?>">
+             <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                 <path d="M8 2a.5.5 0 01.5.5v5h5a.5.5 0 010 1h-5v5a.5.5 0 01-1 0v-5h-5a.5.5 0 010-1h5v-5A.5.5 0 018 2z"/>
+@@ -48,19 +48,23 @@ function isActive(string $path): string
+         </a>
+         <?php endif; ?>
+ 
+-        <?php if ($user && in_array($role, ['superadmin'], true)): ?>
++        <?php if ($user && userCan('users.manage')): ?>
+         <a href="<?= navLink('modules/users/index.php') ?>" class="nav-item <?= isActive('users') ?>">
+             <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                 <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A.261.261 0 017 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002H7.022zM11 7a2 2 0 100-4 2 2 0 000 4zm3-2a3 3 0 11-6 0 3 3 0 016 0zM6.936 9.28a5.88 5.88 0 00-1.23-.247A7.35 7.35 0 005 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 015 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816zM4.92 10A5.493 5.493 0 004 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275zM1.5 5.5a3 3 0 116 0 3 3 0 01-6 0zm3-2a2 2 0 100 4 2 2 0 000-4z"/>
+             </svg>
+             Users
+         </a>
++        <?php endif; ?>
++        <?php if ($user && userCan('routing.manage')): ?>
+         <a href="<?= navLink('modules/routing/index.php') ?>" class="nav-item <?= isActive('routing') ?>">
+             <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                 <path d="M1 11.5a.5.5 0 00.5.5h11.793l-3.147 3.146a.5.5 0 00.708.708l4-4a.5.5 0 000-.708l-4-4a.5.5 0 00-.708.708L13.293 11H1.5a.5.5 0 00-.5.5zm14-7a.5.5 0 01-.5.5H2.707l3.147 3.146a.5.5 0 11-.708.708l-4-4a.5.5 0 010-.708l4-4a.5.5 0 11.708.708L2.707 4H14.5a.5.5 0 01.5.5z"/>
+             </svg>
+             Routing
+         </a>
++        <?php endif; ?>
++        <?php if ($user && userCan('audit.view')): ?>
+         <a href="<?= navLink('modules/audit/index.php') ?>" class="nav-item <?= isActive('audit') ?>">
+             <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                 <path d="M8 1a2 2 0 012 2v4H6V3a2 2 0 012-2zm3 6V3a3 3 0 00-6 0v4a2 2 0 00-2 2v5a2 2 0 002 2h6a2 2 0 002-2V9a2 2 0 00-2-2z"/>
+@@ -68,6 +72,15 @@ function isActive(string $path): string
+             Audit Log
+         </a>
+         <?php endif; ?>
++        <?php if ($user && $role === 'superadmin'): ?>
++        <a href="<?= navLink('modules/roles/index.php') ?>" class="nav-item <?= isActive('roles') ?>">
++            <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
++                <path d="M9.5 5.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM8 1a7 7 0 100 14A7 7 0 008 1zM4.5 7.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z"/>
++                <path d="M8 9c-2.5 0-4 1.5-4 3v.5h8V12c0-1.5-1.5-3-4-3z"/>
++            </svg>
++            Roles
++        </a>
++        <?php endif; ?>
+     </div>
+ 
+     <div class="navbar-user">

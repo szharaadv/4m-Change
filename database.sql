@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email`            VARCHAR(100) NULL,
   `username`         VARCHAR(50)  NOT NULL,
   `password`         VARCHAR(255) NOT NULL,
-  `role`             ENUM('superadmin','admin','qc_prod','manager','qc') NOT NULL DEFAULT 'admin',
+  `role`             ENUM('superadmin','admin','user') NOT NULL DEFAULT 'user',
   `created_at`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `password_token`   VARCHAR(100) NULL,
@@ -151,6 +151,20 @@ CREATE TABLE IF NOT EXISTS `department_qc` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
+-- TABLE: ROLE PERMISSIONS (configurable RBAC matrix)
+-- One row per GRANTED (role, permission). The superadmin role
+-- is never stored here — it always has every permission.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `role_permissions` (
+  `id`         INT NOT NULL AUTO_INCREMENT,
+  `role`       VARCHAR(50)  NOT NULL,
+  `permission` VARCHAR(100) NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_role_permission` (`role`, `permission`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
 -- TABLE: AUDIT LOG
 -- ============================================================
 CREATE TABLE IF NOT EXISTS `audit_logs` (
@@ -177,12 +191,34 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 -- accounts below use the password: admin123
 -- ============================================================
 INSERT INTO `users` (`name`, `username`, `email`, `password`, `role`, `is_active`) VALUES
-  ('Administrator', 'admin',   'admin@example.com',   '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'superadmin', 1),
-  ('Manager Demo',  'manager', 'manager@example.com', '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'manager',    1),
-  ('QC Prod Demo',  'qc_prod', 'qcprod@example.com',  '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'qc_prod',    1),
-  ('QC Demo',       'qc',      'qc@example.com',      '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'qc',         1);
+  ('Super Admin',  'superadmin', 'superadmin@example.com', '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'superadmin', 1),
+  ('Admin Demo',   'admin',      'admin@example.com',      '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'admin',      1),
+  ('User Demo',    'user',       'user@example.com',       '$2y$10$Ek6eo2.HcrkP088fbV42GOqJ6i67aNJKJiH33mj7ixIsmF6NOTo/i', 'user',       1);
+
+-- ============================================================
+-- SEED: DEFAULT ROLE PERMISSIONS
+-- admin = full operational + system screens.
+-- user  = operational only. The superadmin (not listed) always
+-- has every permission and manages this matrix in the app.
+-- ============================================================
+INSERT INTO `role_permissions` (`role`, `permission`) VALUES
+  ('admin', 'changes.view'),
+  ('admin', 'changes.create'),
+  ('admin', 'changes.edit'),
+  ('admin', 'changes.approve_manager'),
+  ('admin', 'changes.approve_qc'),
+  ('admin', 'changes.export'),
+  ('admin', 'users.manage'),
+  ('admin', 'routing.manage'),
+  ('admin', 'audit.view'),
+  ('user',  'changes.view'),
+  ('user',  'changes.create'),
+  ('user',  'changes.edit'),
+  ('user',  'changes.approve_manager'),
+  ('user',  'changes.approve_qc'),
+  ('user',  'changes.export');
 
 -- ============================================================
 -- DONE — no demo change-request data seeded on fresh installs.
--- Log in as 'admin' and use the app to create real records.
+-- Log in as 'superadmin' (password: admin123) to manage roles.
 -- ============================================================

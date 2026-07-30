@@ -15,7 +15,7 @@ $closedMonth  = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE wor
 $rejected     = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status='Rejected'")->fetchColumn();
 $needCustomer = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE confirm_customer='Need'")->fetchColumn();
 $needCount    = getNeedCount($pdo, $role, $userId);
-$pendingApprovals = in_array($role, ['manager','qc'], true) ? getPendingApprovals($pdo, $role, $userId) : [];
+$pendingApprovals = canApproveAny() ? getPendingApprovals($pdo, $role, $userId) : [];
 
 $pipeSubmitted = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status='Submitted'")->fetchColumn();
 $pipeMgr       = (int)$pdo->query("SELECT COUNT(*) FROM change_requests WHERE workflow_status='Manager Approved'")->fetchColumn();
